@@ -1,0 +1,155 @@
+import React, { useState } from "react";
+import { StyleSheet, Pressable, ActivityIndicator, Platform, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import * as Haptics from "expo-haptics";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withRepeat,
+  withSequence,
+} from "react-native-reanimated";
+import { ThemedText } from "@/components/ThemedText";
+import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+
+interface ClockButtonProps {
+  isClockedIn: boolean;
+  onClockIn: (location: { latitude: number; longitude: number }) => Promise<void>;
+  onClockOut: (location: { latitude: number; longitude: number }) => Promise<void>;
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scale = useSharedValue(1);
+  const pulse = useSharedValue(1);
+
+  React.useEffect(() => {
+    if (isClockedIn) {
+      pulse.value = withRepeat(
+        withSequence(
+          withSpring(1.05, { damping: 10 }),
+          withSpring(1, { damping: 10 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulse.value = 1;
+    }
+  }, [isClockedIn]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value * pulse.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, { damping: 15, stiffness: 150 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
+  };
+
+  const handlePress = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setError("Location permission required");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setIsLoading(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const coords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      if (isClockedIn) {
+        await onClockOut(coords);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        await onClockIn(coords);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      setError("Failed to get location");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.wrapper}>
+      <AnimatedPressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isLoading}
+        style={[
+          styles.button,
+          { backgroundColor: isClockedIn ? Colors.error : Colors.success },
+          animatedStyle,
+        ]}
+        testID="clock-button"
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <>
+            <Feather
+              name={isClockedIn ? "log-out" : "log-in"}
+              size={24}
+              color="#FFFFFF"
+            />
+            <ThemedText style={styles.buttonText}>
+              {isClockedIn ? "Clock Out" : "Clock In"}
+            </ThemedText>
+          </>
+        )}
+      </AnimatedPressable>
+      {error ? (
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: "center",
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing["2xl"],
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    ...Shadows.floating,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    marginTop: Spacing.sm,
+    textAlign: "center",
+  },
+});

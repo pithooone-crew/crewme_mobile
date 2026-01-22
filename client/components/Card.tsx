@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 
 interface CardProps {
   elevation?: number;
@@ -64,11 +64,15 @@ export function Card({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, springConfig);
+    if (onPress) {
+      scale.value = withSpring(0.98, springConfig);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, springConfig);
+    if (onPress) {
+      scale.value = withSpring(1, springConfig);
+    }
   };
 
   return (
@@ -76,10 +80,12 @@ export function Card({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      disabled={!onPress}
       style={[
         styles.card,
         {
           backgroundColor: cardBackgroundColor,
+          borderColor: theme.border,
         },
         animatedStyle,
         style,
@@ -103,7 +109,8 @@ export function Card({
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.xl,
-    borderRadius: BorderRadius["2xl"],
+    borderRadius: BorderRadius.xs,
+    borderWidth: 1,
   },
   cardTitle: {
     marginBottom: Spacing.sm,
