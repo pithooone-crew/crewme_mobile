@@ -24,6 +24,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, Task, Badge } from "@/lib/api";
+import { mockDashboard } from "@/lib/mockData";
 import { HomeStackParamList } from "@/navigation/HomeStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
@@ -34,7 +35,7 @@ export default function DashboardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [isClockedIn, setIsClockedIn] = useState(false);
 
   const {
@@ -45,22 +46,23 @@ export default function DashboardScreen() {
   } = useQuery({
     queryKey: ["/api/dashboard"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockDashboard;
+      }
       const response = await api.dashboard.get();
       if (response.data) {
         setIsClockedIn(response.data.clockedIn);
         return response.data;
       }
-      return {
-        clockedIn: false,
-        todaysTasks: [] as Task[],
-        xpProgress: { current: 0, nextLevel: 1000, level: 1 },
-        recentBadge: undefined as Badge | undefined,
-        weeklyStats: { tasksCompleted: 0, hoursWorked: 0 },
-      };
+      return mockDashboard;
     },
   });
 
   const handleClockIn = async (location: { latitude: number; longitude: number }) => {
+    if (isDemoMode) {
+      setIsClockedIn(true);
+      return;
+    }
     const response = await api.clock.in(location);
     if (response.data) {
       setIsClockedIn(true);
@@ -69,6 +71,10 @@ export default function DashboardScreen() {
   };
 
   const handleClockOut = async (location: { latitude: number; longitude: number }) => {
+    if (isDemoMode) {
+      setIsClockedIn(false);
+      return;
+    }
     const response = await api.clock.out(location);
     if (response.data) {
       setIsClockedIn(false);
@@ -109,11 +115,7 @@ export default function DashboardScreen() {
     );
   }
 
-  const data = dashboardData || {
-    todaysTasks: [],
-    xpProgress: { current: 0, nextLevel: 1000, level: 1 },
-    weeklyStats: { tasksCompleted: 0, hoursWorked: 0 },
-  };
+  const data = dashboardData || mockDashboard;
 
   return (
     <ScrollView
@@ -132,6 +134,15 @@ export default function DashboardScreen() {
         />
       }
     >
+      {isDemoMode ? (
+        <View style={[styles.demoBanner, { backgroundColor: Colors.warning + "20" }]}>
+          <Feather name="info" size={16} color={Colors.warning} />
+          <ThemedText style={[styles.demoText, { color: Colors.warning }]}>
+            Demo Mode - Using sample data
+          </ThemedText>
+        </View>
+      ) : null}
+
       <View style={styles.greetingRow}>
         <View>
           <ThemedText type="h2">
@@ -154,10 +165,10 @@ export default function DashboardScreen() {
         <ThemedText type="h4" style={styles.clockTitle}>
           {isClockedIn ? "You're on the clock" : "Ready to work?"}
         </ThemedText>
-        {isClockedIn && dashboardData?.clockInTime ? (
+        {isClockedIn && data?.clockInTime ? (
           <ThemedText style={[styles.clockTime, { color: theme.textSecondary }]}>
             Clocked in at{" "}
-            {new Date(dashboardData.clockInTime).toLocaleTimeString([], {
+            {new Date(data.clockInTime).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -248,6 +259,19 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  demoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  demoText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   greetingRow: {
     flexDirection: "row",

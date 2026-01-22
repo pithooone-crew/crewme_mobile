@@ -3,22 +3,22 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
+import { useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { XPProgressBar } from "@/components/XPProgressBar";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
 import { api, Task } from "@/lib/api";
+import { mockTasks } from "@/lib/mockData";
 import { TasksStackParamList } from "@/navigation/TasksStackNavigator";
 
 type TaskDetailRouteProp = RouteProp<TasksStackParamList, "TaskDetail">;
@@ -39,22 +39,30 @@ const statusLabels: Record<string, { label: string; icon: string }> = {
 export default function TaskDetailScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const navigation = useNavigation();
   const route = useRoute<TaskDetailRouteProp>();
   const { theme } = useTheme();
+  const { isDemoMode } = useAuth();
   const queryClient = useQueryClient();
   const { taskId } = route.params;
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["/api/tasks", taskId],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockTasks.find((t) => t.id === taskId) || mockTasks[0];
+      }
       const response = await api.tasks.get(taskId);
-      return response.data;
+      return response.data || mockTasks.find((t) => t.id === taskId);
     },
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
+      if (isDemoMode) {
+        setLocalStatus(newStatus);
+        return { status: newStatus };
+      }
       const response = await api.tasks.updateStatus(taskId, newStatus);
       return response.data;
     },
@@ -81,8 +89,9 @@ export default function TaskDetailScreen() {
     );
   }
 
+  const currentStatus = localStatus || task.status;
   const priority = priorityLabels[task.priority] || priorityLabels.medium;
-  const status = statusLabels[task.status] || statusLabels.pending;
+  const status = statusLabels[currentStatus] || statusLabels.pending;
 
   return (
     <ScrollView
@@ -117,7 +126,7 @@ export default function TaskDetailScreen() {
             <Feather
               name={status.icon as any}
               size={24}
-              color={task.status === "completed" ? Colors.success : Colors.primary}
+              color={currentStatus === "completed" ? Colors.success : Colors.primary}
             />
             <View>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -211,7 +220,7 @@ export default function TaskDetailScreen() {
       ) : null}
 
       <View style={styles.actionsContainer}>
-        {task.status === "pending" ? (
+        {currentStatus === "pending" ? (
           <Button
             onPress={() => handleStatusUpdate("in_progress")}
             disabled={updateStatusMutation.isPending}
@@ -224,7 +233,7 @@ export default function TaskDetailScreen() {
           </Button>
         ) : null}
 
-        {task.status === "in_progress" ? (
+        {currentStatus === "in_progress" ? (
           <Button
             onPress={() => handleStatusUpdate("completed")}
             disabled={updateStatusMutation.isPending}
@@ -237,7 +246,7 @@ export default function TaskDetailScreen() {
           </Button>
         ) : null}
 
-        {task.status === "completed" ? (
+        {currentStatus === "completed" ? (
           <View style={styles.completedBanner}>
             <Feather name="check-circle" size={24} color={Colors.success} />
             <ThemedText style={{ color: Colors.success, fontWeight: "600" }}>

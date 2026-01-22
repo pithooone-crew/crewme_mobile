@@ -1,0 +1,393 @@
+import { Task, Badge, LeaderboardEntry, SkillTree, Reward, StarPerformer, UserProfile, Certification, PerformanceHistory } from "./api";
+
+export const mockUser = {
+  id: "user-1",
+  email: "demo@crewme.app",
+  firstName: "Alex",
+  lastName: "Johnson",
+  role: "crew_member" as const,
+  avatarUrl: undefined,
+  xp: 2450,
+  level: 5,
+  points: 1250,
+};
+
+export const mockDashboard = {
+  clockedIn: false,
+  clockInTime: undefined,
+  todaysTasks: [
+    {
+      id: "task-1",
+      title: "Install electrical outlets in Building C",
+      description: "Install 12 new electrical outlets on the 3rd floor according to the blueprint specifications.",
+      status: "pending" as const,
+      priority: "high" as const,
+      projectId: "proj-1",
+      projectName: "Downtown Office Complex",
+      scheduledDate: new Date().toISOString(),
+      location: { latitude: 40.7128, longitude: -74.006, address: "123 Main St, New York, NY" },
+      skillRequirements: ["Electrical", "Blueprint Reading"],
+      xpReward: 150,
+      photos: [],
+      assignedTo: "user-1",
+    },
+    {
+      id: "task-2",
+      title: "Inspect HVAC system",
+      description: "Perform quarterly inspection of the HVAC system and document any issues.",
+      status: "in_progress" as const,
+      priority: "medium" as const,
+      projectId: "proj-1",
+      projectName: "Downtown Office Complex",
+      scheduledDate: new Date().toISOString(),
+      location: { latitude: 40.7128, longitude: -74.006, address: "123 Main St, New York, NY" },
+      skillRequirements: ["HVAC"],
+      xpReward: 100,
+      photos: [],
+      assignedTo: "user-1",
+    },
+  ] as Task[],
+  xpProgress: { current: 2450, nextLevel: 3000, level: 5 },
+  recentBadge: {
+    id: "badge-1",
+    name: "Early Bird",
+    description: "Clocked in before 7 AM for 5 consecutive days",
+    iconUrl: "",
+    unlockedAt: new Date().toISOString(),
+    isUnlocked: true,
+    category: "attendance",
+  } as Badge,
+  weeklyStats: { tasksCompleted: 12, hoursWorked: 38 },
+};
+
+export const mockTasks: Task[] = [
+  ...mockDashboard.todaysTasks,
+  {
+    id: "task-3",
+    title: "Complete framing on 2nd floor",
+    description: "Finish the remaining framing work on the east wing of the 2nd floor.",
+    status: "completed" as const,
+    priority: "high" as const,
+    projectId: "proj-2",
+    projectName: "Residential Tower",
+    scheduledDate: new Date(Date.now() - 86400000).toISOString(),
+    location: { latitude: 40.7580, longitude: -73.9855, address: "456 Park Ave, New York, NY" },
+    skillRequirements: ["Carpentry", "Framing"],
+    xpReward: 200,
+    photos: ["photo1.jpg"],
+    assignedTo: "user-1",
+  },
+  {
+    id: "task-4",
+    title: "Plumbing rough-in for bathrooms",
+    description: "Install rough-in plumbing for 4 bathrooms on the 3rd floor.",
+    status: "pending" as const,
+    priority: "urgent" as const,
+    projectId: "proj-2",
+    projectName: "Residential Tower",
+    scheduledDate: new Date(Date.now() + 86400000).toISOString(),
+    skillRequirements: ["Plumbing"],
+    xpReward: 175,
+    photos: [],
+    assignedTo: "user-1",
+  },
+  {
+    id: "task-5",
+    title: "Weld support beams",
+    description: "Weld structural support beams in the basement parking area.",
+    status: "pending" as const,
+    priority: "medium" as const,
+    projectId: "proj-1",
+    projectName: "Downtown Office Complex",
+    scheduledDate: new Date(Date.now() + 172800000).toISOString(),
+    skillRequirements: ["Welding", "Structural"],
+    xpReward: 225,
+    photos: [],
+    assignedTo: "user-1",
+  },
+];
+
+export const mockBadges: Badge[] = [
+  {
+    id: "badge-1",
+    name: "Early Bird",
+    description: "Clocked in before 7 AM for 5 consecutive days",
+    iconUrl: "",
+    unlockedAt: new Date().toISOString(),
+    isUnlocked: true,
+    category: "attendance",
+  },
+  {
+    id: "badge-2",
+    name: "Task Master",
+    description: "Completed 50 tasks",
+    iconUrl: "",
+    unlockedAt: new Date().toISOString(),
+    isUnlocked: true,
+    category: "productivity",
+  },
+  {
+    id: "badge-3",
+    name: "Team Player",
+    description: "Helped 10 teammates with their tasks",
+    iconUrl: "",
+    unlockedAt: new Date().toISOString(),
+    isUnlocked: true,
+    category: "teamwork",
+  },
+  {
+    id: "badge-4",
+    name: "Safety First",
+    description: "100 days without safety incidents",
+    iconUrl: "",
+    isUnlocked: false,
+    category: "safety",
+  },
+  {
+    id: "badge-5",
+    name: "Perfectionist",
+    description: "Completed 10 tasks with zero rework",
+    iconUrl: "",
+    isUnlocked: false,
+    category: "quality",
+  },
+  {
+    id: "badge-6",
+    name: "Mentor",
+    description: "Trained 5 new crew members",
+    iconUrl: "",
+    isUnlocked: false,
+    category: "leadership",
+  },
+];
+
+export const mockLeaderboard: LeaderboardEntry[] = [
+  { rank: 1, userId: "user-2", firstName: "Marcus", lastName: "Chen", xp: 4850, level: 8, tasksCompleted: 87 },
+  { rank: 2, userId: "user-3", firstName: "Sarah", lastName: "Williams", xp: 4200, level: 7, tasksCompleted: 75 },
+  { rank: 3, userId: "user-4", firstName: "David", lastName: "Martinez", xp: 3800, level: 7, tasksCompleted: 68 },
+  { rank: 4, userId: "user-1", firstName: "Alex", lastName: "Johnson", xp: 2450, level: 5, tasksCompleted: 45 },
+  { rank: 5, userId: "user-5", firstName: "Emily", lastName: "Brown", xp: 2100, level: 4, tasksCompleted: 38 },
+  { rank: 6, userId: "user-6", firstName: "Michael", lastName: "Davis", xp: 1850, level: 4, tasksCompleted: 32 },
+  { rank: 7, userId: "user-7", firstName: "Jessica", lastName: "Wilson", xp: 1600, level: 3, tasksCompleted: 28 },
+  { rank: 8, userId: "user-8", firstName: "Ryan", lastName: "Taylor", xp: 1400, level: 3, tasksCompleted: 24 },
+];
+
+export const mockSkillTrees: SkillTree[] = [
+  {
+    id: "carpentry",
+    name: "Carpentry",
+    iconName: "tool",
+    description: "Master the art of woodworking and construction",
+    currentLevel: 3,
+    progress: 0.65,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: true, skills: [
+        { id: "c1-1", name: "Basic Measuring", description: "Accurate measurements", isUnlocked: true },
+        { id: "c1-2", name: "Hand Tools", description: "Use of basic hand tools", isUnlocked: true },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: true, skills: [
+        { id: "c2-1", name: "Power Tools", description: "Safe use of power tools", isUnlocked: true },
+        { id: "c2-2", name: "Framing", description: "Wall and floor framing", isUnlocked: true },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: true, skills: [
+        { id: "c3-1", name: "Finish Work", description: "Trim and molding", isUnlocked: true },
+        { id: "c3-2", name: "Stair Building", description: "Stair construction", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "c4-1", name: "Custom Cabinets", description: "Cabinet making", isUnlocked: false },
+        { id: "c4-2", name: "Restoration", description: "Historic restoration", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "c5-1", name: "Design", description: "Custom design work", isUnlocked: false },
+        { id: "c5-2", name: "Mentorship", description: "Train apprentices", isUnlocked: false },
+      ]},
+    ],
+  },
+  {
+    id: "electrical",
+    name: "Electrical",
+    iconName: "zap",
+    description: "Electrical systems installation and repair",
+    currentLevel: 2,
+    progress: 0.4,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: true, skills: [
+        { id: "e1-1", name: "Safety", description: "Electrical safety basics", isUnlocked: true },
+        { id: "e1-2", name: "Basic Wiring", description: "Simple circuits", isUnlocked: true },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: true, skills: [
+        { id: "e2-1", name: "Panel Work", description: "Electrical panels", isUnlocked: true },
+        { id: "e2-2", name: "Code", description: "Electrical code", isUnlocked: false },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: false, skills: [
+        { id: "e3-1", name: "Commercial", description: "Commercial systems", isUnlocked: false },
+        { id: "e3-2", name: "Troubleshooting", description: "Advanced diagnostics", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "e4-1", name: "Industrial", description: "Industrial systems", isUnlocked: false },
+        { id: "e4-2", name: "Automation", description: "Building automation", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "e5-1", name: "Design", description: "System design", isUnlocked: false },
+        { id: "e5-2", name: "Licensing", description: "Master electrician", isUnlocked: false },
+      ]},
+    ],
+  },
+  {
+    id: "plumbing",
+    name: "Plumbing",
+    iconName: "droplet",
+    description: "Water and drainage systems",
+    currentLevel: 1,
+    progress: 0.8,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: true, skills: [
+        { id: "p1-1", name: "Pipe Fitting", description: "Basic pipe work", isUnlocked: true },
+        { id: "p1-2", name: "Fixtures", description: "Fixture installation", isUnlocked: true },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: false, skills: [
+        { id: "p2-1", name: "Drainage", description: "Drain systems", isUnlocked: false },
+        { id: "p2-2", name: "Water Heaters", description: "Water heater install", isUnlocked: false },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: false, skills: [
+        { id: "p3-1", name: "Gas Lines", description: "Gas piping", isUnlocked: false },
+        { id: "p3-2", name: "Backflow", description: "Backflow prevention", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "p4-1", name: "Commercial", description: "Commercial plumbing", isUnlocked: false },
+        { id: "p4-2", name: "Medical Gas", description: "Medical gas systems", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "p5-1", name: "Design", description: "System design", isUnlocked: false },
+        { id: "p5-2", name: "Licensing", description: "Master plumber", isUnlocked: false },
+      ]},
+    ],
+  },
+  {
+    id: "hvac",
+    name: "HVAC",
+    iconName: "wind",
+    description: "Heating, ventilation, and air conditioning",
+    currentLevel: 1,
+    progress: 0.3,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: true, skills: [
+        { id: "h1-1", name: "Basics", description: "HVAC fundamentals", isUnlocked: true },
+        { id: "h1-2", name: "Filters", description: "Filter replacement", isUnlocked: false },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: false, skills: [
+        { id: "h2-1", name: "Ductwork", description: "Duct installation", isUnlocked: false },
+        { id: "h2-2", name: "Refrigerant", description: "Refrigerant handling", isUnlocked: false },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: false, skills: [
+        { id: "h3-1", name: "Controls", description: "Control systems", isUnlocked: false },
+        { id: "h3-2", name: "Balancing", description: "System balancing", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "h4-1", name: "Commercial", description: "Commercial HVAC", isUnlocked: false },
+        { id: "h4-2", name: "VRF", description: "VRF systems", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "h5-1", name: "Design", description: "System design", isUnlocked: false },
+        { id: "h5-2", name: "Energy", description: "Energy optimization", isUnlocked: false },
+      ]},
+    ],
+  },
+  {
+    id: "masonry",
+    name: "Masonry",
+    iconName: "box",
+    description: "Brick, block, and stone work",
+    currentLevel: 0,
+    progress: 0,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: false, skills: [
+        { id: "m1-1", name: "Mixing", description: "Mortar mixing", isUnlocked: false },
+        { id: "m1-2", name: "Laying", description: "Basic block laying", isUnlocked: false },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: false, skills: [
+        { id: "m2-1", name: "Brick", description: "Brick laying", isUnlocked: false },
+        { id: "m2-2", name: "Pointing", description: "Repointing", isUnlocked: false },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: false, skills: [
+        { id: "m3-1", name: "Stone", description: "Stone work", isUnlocked: false },
+        { id: "m3-2", name: "Arches", description: "Arch construction", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "m4-1", name: "Restoration", description: "Historic restoration", isUnlocked: false },
+        { id: "m4-2", name: "Veneer", description: "Stone veneer", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "m5-1", name: "Design", description: "Custom design", isUnlocked: false },
+        { id: "m5-2", name: "Art", description: "Decorative masonry", isUnlocked: false },
+      ]},
+    ],
+  },
+  {
+    id: "welding",
+    name: "Welding",
+    iconName: "target",
+    description: "Metal joining and fabrication",
+    currentLevel: 0,
+    progress: 0,
+    levels: [
+      { level: 1, name: "Apprentice", xpRequired: 0, isUnlocked: false, skills: [
+        { id: "w1-1", name: "Safety", description: "Welding safety", isUnlocked: false },
+        { id: "w1-2", name: "MIG", description: "MIG welding basics", isUnlocked: false },
+      ]},
+      { level: 2, name: "Journeyman", xpRequired: 500, isUnlocked: false, skills: [
+        { id: "w2-1", name: "TIG", description: "TIG welding", isUnlocked: false },
+        { id: "w2-2", name: "Stick", description: "Stick welding", isUnlocked: false },
+      ]},
+      { level: 3, name: "Advanced", xpRequired: 1500, isUnlocked: false, skills: [
+        { id: "w3-1", name: "Structural", description: "Structural welding", isUnlocked: false },
+        { id: "w3-2", name: "Pipe", description: "Pipe welding", isUnlocked: false },
+      ]},
+      { level: 4, name: "Expert", xpRequired: 3000, isUnlocked: false, skills: [
+        { id: "w4-1", name: "Certification", description: "AWS certification", isUnlocked: false },
+        { id: "w4-2", name: "Stainless", description: "Stainless steel", isUnlocked: false },
+      ]},
+      { level: 5, name: "Master", xpRequired: 5000, isUnlocked: false, skills: [
+        { id: "w5-1", name: "Fabrication", description: "Custom fabrication", isUnlocked: false },
+        { id: "w5-2", name: "Inspection", description: "Weld inspection", isUnlocked: false },
+      ]},
+    ],
+  },
+];
+
+export const mockRewards: Reward[] = [
+  { id: "reward-1", name: "Extra PTO Day", description: "One additional paid day off", category: "pto", pointsCost: 500, available: true },
+  { id: "reward-2", name: "$25 Gift Card", description: "Amazon, Home Depot, or gas station", category: "gift_card", pointsCost: 250, available: true },
+  { id: "reward-3", name: "$50 Gift Card", description: "Your choice of retailer", category: "gift_card", pointsCost: 450, available: true },
+  { id: "reward-4", name: "Premium Tool Set", description: "Professional-grade hand tool set", category: "equipment", pointsCost: 1500, available: true },
+  { id: "reward-5", name: "Safety Gear Upgrade", description: "Premium safety equipment", category: "equipment", pointsCost: 800, available: true },
+  { id: "reward-6", name: "Performance Bonus", description: "$100 cash bonus", category: "bonus", pointsCost: 1000, available: true },
+];
+
+export const mockStarPerformer: StarPerformer = {
+  userId: "user-2",
+  firstName: "Marcus",
+  lastName: "Chen",
+  title: "Star of the Week",
+  reason: "Completed 15 tasks ahead of schedule while maintaining perfect quality scores. Mentored two new team members and received outstanding feedback from the project manager.",
+  period: "Week of Jan 15-21",
+  nominatedBy: "John Smith, Project Manager",
+  xpBonus: 500,
+};
+
+export const mockProfile: UserProfile = {
+  id: "user-1",
+  email: "demo@crewme.app",
+  firstName: "Alex",
+  lastName: "Johnson",
+  phone: "(555) 123-4567",
+  role: "crew_member",
+  hireDate: "2023-06-15",
+  skills: ["Carpentry", "Electrical", "Plumbing", "Blueprint Reading", "Safety Certified"],
+};
+
+export const mockCertifications: Certification[] = [
+  { id: "cert-1", name: "OSHA 30", issuedBy: "OSHA", issuedDate: "2023-07-01", expiryDate: "2028-07-01", status: "active" },
+  { id: "cert-2", name: "First Aid/CPR", issuedBy: "Red Cross", issuedDate: "2024-01-15", expiryDate: "2026-01-15", status: "active" },
+  { id: "cert-3", name: "Forklift Operator", issuedBy: "Equipment Training Inc", issuedDate: "2023-09-20", expiryDate: "2025-09-20", status: "active" },
+];

@@ -19,7 +19,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { TaskCardSkeleton } from "@/components/LoadingSkeleton";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
 import { api, Task } from "@/lib/api";
+import { mockTasks } from "@/lib/mockData";
 import { TasksStackParamList } from "@/navigation/TasksStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<TasksStackParamList>;
@@ -37,6 +39,7 @@ export default function TasksScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
+  const { isDemoMode } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -48,8 +51,11 @@ export default function TasksScreen() {
   } = useQuery({
     queryKey: ["/api/tasks"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockTasks;
+      }
       const response = await api.tasks.list();
-      return response.data || [];
+      return response.data || mockTasks;
     },
   });
 
