@@ -18,7 +18,7 @@ async function request<T>(
     ...options.headers,
   };
 
-  if (token) {
+  if (token && token !== "demo-token") {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
@@ -48,12 +48,12 @@ async function request<T>(
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      request<{ token: string; user: User }>("/api/auth/login", {
+      request<{ token: string; user: User }>("/api/mobile/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       }),
-    logout: () => request("/api/auth/logout", { method: "POST" }),
-    me: () => request<User>("/api/auth/me"),
+    logout: () => request("/api/mobile/logout", { method: "POST" }),
+    me: () => request<User>("/api/mobile/me"),
   },
 
   dashboard: {
@@ -65,75 +65,75 @@ export const api = {
         xpProgress: { current: number; nextLevel: number; level: number };
         recentBadge?: Badge;
         weeklyStats: { tasksCompleted: number; hoursWorked: number };
-      }>("/api/dashboard"),
+      }>("/api/mobile/dashboard"),
   },
 
   clock: {
     in: (location: { latitude: number; longitude: number }) =>
-      request<{ clockInTime: string }>("/api/clock/in", {
+      request<{ clockInTime: string }>("/api/mobile/clock/in", {
         method: "POST",
         body: JSON.stringify({ location }),
       }),
     out: (location: { latitude: number; longitude: number }) =>
-      request<{ clockOutTime: string; hoursWorked: number }>("/api/clock/out", {
+      request<{ clockOutTime: string; hoursWorked: number }>("/api/mobile/clock/out", {
         method: "POST",
         body: JSON.stringify({ location }),
       }),
     status: () =>
-      request<{ clockedIn: boolean; clockInTime?: string }>("/api/clock/status"),
+      request<{ clockedIn: boolean; clockInTime?: string }>("/api/mobile/clock/status"),
   },
 
   tasks: {
     list: (filters?: { status?: string; priority?: string; projectId?: string }) =>
-      request<Task[]>(`/api/tasks?${new URLSearchParams(filters as Record<string, string>).toString()}`),
-    get: (id: string) => request<Task>(`/api/tasks/${id}`),
+      request<Task[]>(`/api/mobile/tasks?${new URLSearchParams(filters as Record<string, string>).toString()}`),
+    get: (id: string) => request<Task>(`/api/mobile/tasks/${id}`),
     updateStatus: (id: string, status: string) =>
-      request<Task>(`/api/tasks/${id}/status`, {
+      request<Task>(`/api/mobile/tasks/${id}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
     addPhoto: (id: string, photoUri: string) =>
-      request<Task>(`/api/tasks/${id}/photos`, {
+      request<Task>(`/api/mobile/tasks/${id}/photos`, {
         method: "POST",
         body: JSON.stringify({ photoUri }),
       }),
   },
 
   gamification: {
-    xp: () => request<{ xp: number; level: number; nextLevelXp: number }>("/api/gamification/xp"),
-    badges: () => request<Badge[]>("/api/gamification/badges"),
+    xp: () => request<{ xp: number; level: number; nextLevelXp: number }>("/api/mobile/gamification/xp"),
+    badges: () => request<Badge[]>("/api/mobile/gamification/badges"),
     leaderboard: (period?: "week" | "month" | "all") =>
-      request<LeaderboardEntry[]>(`/api/gamification/leaderboard?period=${period || "week"}`),
+      request<LeaderboardEntry[]>(`/api/mobile/gamification/leaderboard?period=${period || "week"}`),
   },
 
   skills: {
-    trees: () => request<SkillTree[]>("/api/skills/trees"),
-    progress: (tradeId: string) => request<SkillProgress>(`/api/skills/${tradeId}/progress`),
+    trees: () => request<SkillTree[]>("/api/mobile/skills/trees"),
+    progress: (tradeId: string) => request<SkillProgress>(`/api/mobile/skills/${tradeId}/progress`),
   },
 
   rewards: {
-    list: () => request<Reward[]>("/api/rewards"),
+    list: () => request<Reward[]>("/api/mobile/rewards"),
     redeem: (rewardId: string) =>
-      request<{ success: boolean; message: string }>(`/api/rewards/${rewardId}/redeem`, {
+      request<{ success: boolean; message: string }>(`/api/mobile/rewards/${rewardId}/redeem`, {
         method: "POST",
       }),
-    history: () => request<RedemptionHistory[]>("/api/rewards/history"),
+    history: () => request<RedemptionHistory[]>("/api/mobile/rewards/history"),
   },
 
   starPerformer: {
-    current: () => request<StarPerformer>("/api/star-performer/current"),
-    history: () => request<StarPerformer[]>("/api/star-performer/history"),
+    current: () => request<StarPerformer>("/api/mobile/star-performer/current"),
+    history: () => request<StarPerformer[]>("/api/mobile/star-performer/history"),
   },
 
   profile: {
-    get: () => request<UserProfile>("/api/profile"),
+    get: () => request<UserProfile>("/api/mobile/profile"),
     update: (data: Partial<UserProfile>) =>
-      request<UserProfile>("/api/profile", {
+      request<UserProfile>("/api/mobile/profile", {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
-    certifications: () => request<Certification[]>("/api/profile/certifications"),
-    performance: () => request<PerformanceHistory>("/api/profile/performance"),
+    certifications: () => request<Certification[]>("/api/mobile/profile/certifications"),
+    performance: () => request<PerformanceHistory>("/api/mobile/profile/performance"),
   },
 };
 
