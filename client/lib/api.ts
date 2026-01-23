@@ -1,6 +1,6 @@
 import { getToken, clearAuth, User } from "./auth";
 
-const API_BASE_URL = "https://crew-me.app";
+const API_BASE_URL = "https://site-scheduler--pithooone.replit.app";
 
 interface ApiResponse<T> {
   data?: T;
