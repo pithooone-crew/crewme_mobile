@@ -1,0 +1,130 @@
+Mobile App Feature: Project Templates
+Overview
+Add a Templates feature to the CrewMe mobile app that allows users to browse pre-built project templates, generate custom templates using AI, and create new projects from templates in seconds.
+
+API Endpoints (Already Implemented on Backend)
+GET /api/templates - List all available templates
+GET /api/templates/:id - Get template details with phases and tasks
+POST /api/templates/:id/apply - Create a project from a template
+POST /api/templates/generate - AI-generate a custom template from description
+POST /api/templates/seed - Load sample templates (admin only)
+New Screen: TemplatesScreen.tsx
+Location: crewme_mobile/src/screens/TemplatesScreen.tsx
+
+Features:
+
+Template List View
+
+Grid/list of available templates with cards showing:
+Template name and icon
+Category (datacenter, commercial, residential, industrial, infrastructure)
+Budget estimate, task count, duration
+"2 min setup" badge for quick-start templates
+Pull-to-refresh functionality
+Filter by category
+Template Detail Modal
+
+Template overview with phases breakdown
+Task count per phase
+Total estimated duration and budget
+"Apply Template" button
+Required skills summary
+AI Template Generation
+
+"Generate with AI" floating action button
+Modal with:
+Text input for project description (multiline, min 10 chars)
+Dropdown for project type
+Budget input (numeric)
+Duration input (days)
+Loading state during AI generation (15-45 seconds)
+Success/error feedback
+Apply Template Flow
+
+Confirmation modal before applying
+Project name input
+Start date picker
+Location input
+Success screen showing created project with task count
+API Service Additions
+Add to crewme_mobile/src/services/api.ts:
+
+// Templates API
+async getTemplates(): Promise<ApiResponse<Template[]>>
+async getTemplateById(id: number): Promise<ApiResponse<TemplateDetail>>
+async applyTemplate(templateId: number, projectData: ApplyTemplateInput): Promise<ApiResponse<Project>>
+async generateTemplate(input: GenerateTemplateInput): Promise<ApiResponse<Template>>
+Types
+Add to crewme_mobile/src/types/:
+
+interface Template {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  estimatedDuration: number;
+  estimatedBudget: string;
+  isPublic: boolean;
+  createdBy: string | null;
+}
+interface TemplatePhase {
+  id: number;
+  name: string;
+  description: string;
+  order: number;
+  estimatedDays: number;
+  tasks: TemplateTask[];
+}
+interface TemplateTask {
+  id: number;
+  name: string;
+  description: string;
+  estimatedHours: number;
+  requiredSkills: string[];
+  crewSize: number;
+  order: number;
+  isMilestone: boolean;
+  inspectionRequired: boolean;
+}
+interface TemplateDetail extends Template {
+  phases: TemplatePhase[];
+}
+interface GenerateTemplateInput {
+  description: string;
+  projectType?: string;
+  estimatedBudget?: number;
+  estimatedDuration?: number;
+}
+interface ApplyTemplateInput {
+  projectName: string;
+  location: string;
+  startDate: string;
+}
+Navigation
+Add to bottom tab or as sub-screen under Projects:
+
+Tab icon: FileText or Layers from lucide-react-native
+Tab label: "Templates"
+UI Components Needed
+TemplateCard - Reusable card for template list
+TemplateDetailSheet - Bottom sheet with template details
+AIGenerateModal - Modal for AI template generation
+ApplyTemplateModal - Modal for creating project from template
+Key UX Considerations
+Show "40+ hrs saved" messaging when applying templates
+Display "AI Generated" badge for user-created templates
+Loading skeleton while fetching templates
+Optimistic updates when applying templates
+Offline indicator if no network
+Permissions (RBAC)
+crew_member: Can view templates only
+lead/foreman: Can view and apply templates
+project_manager: Can view, apply, and generate AI templates
+admin: Full access including seed templates
+Color Theme
+Use existing theme from crewme_mobile/src/theme/:
+
+Primary color for action buttons
+Green badges for "Available" templates
+Gradient accent for AI-related elements
+This prompt provides everything needed to implement the mobile template feature that mirrors the web functionality.

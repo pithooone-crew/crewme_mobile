@@ -257,6 +257,25 @@ export const api = {
         method: "DELETE",
       }),
   },
+
+  templates: {
+    list: () => request<Template[]>("/api/templates"),
+    get: (id: number) => request<TemplateDetail>(`/api/templates/${id}`),
+    apply: (templateId: number, data: ApplyTemplateInput) =>
+      request<Project>(`/api/templates/${templateId}/apply`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    generate: (input: GenerateTemplateInput) =>
+      request<Template>("/api/templates/generate", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    seed: () =>
+      request<{ success: boolean }>("/api/templates/seed", {
+        method: "POST",
+      }),
+  },
 };
 
 export interface Task {
@@ -543,4 +562,55 @@ export interface CreateMessageData {
   projectId?: string;
   taskId?: string;
   recipientId?: string;
+}
+
+export interface Template {
+  id: number;
+  name: string;
+  description: string;
+  category: "datacenter" | "commercial" | "residential" | "industrial" | "infrastructure";
+  estimatedDuration: number;
+  estimatedBudget: string;
+  isPublic: boolean;
+  createdBy: string | null;
+  taskCount?: number;
+  phaseCount?: number;
+}
+
+export interface TemplateTask {
+  id: number;
+  name: string;
+  description: string;
+  estimatedHours: number;
+  requiredSkills: string[];
+  crewSize: number;
+  order: number;
+  isMilestone: boolean;
+  inspectionRequired: boolean;
+}
+
+export interface TemplatePhase {
+  id: number;
+  name: string;
+  description: string;
+  order: number;
+  estimatedDays: number;
+  tasks: TemplateTask[];
+}
+
+export interface TemplateDetail extends Template {
+  phases: TemplatePhase[];
+}
+
+export interface GenerateTemplateInput {
+  description: string;
+  projectType?: string;
+  estimatedBudget?: number;
+  estimatedDuration?: number;
+}
+
+export interface ApplyTemplateInput {
+  projectName: string;
+  location: string;
+  startDate: string;
 }
