@@ -18,7 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { api, CrewMessage } from "@/lib/api";
+import { api, CrewMessage, ReadStatus } from "@/lib/api";
 
 type RouteParams = {
   MessageDetail: { messageId: string };
@@ -178,6 +178,8 @@ export default function MessageDetailScreen() {
 
   const [replyText, setReplyText] = useState("");
   const [showReply, setShowReply] = useState(false);
+  const [readStatus, setReadStatus] = useState<ReadStatus | null>(null);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
 
   const {
     data: message,
@@ -195,11 +197,42 @@ export default function MessageDetailScreen() {
   });
 
   useEffect(() => {
-    if (message && message.status === "unread" && !isDemoMode) {
-      api.messages.markRead(messageId);
-      queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
-    }
+    const sendReadReceipt = async () => {
+      if (message && message.status === "unread" && !isDemoMode && !sendingReceipt) {
+        setSendingReceipt(true);
+        try {
+          const response = await api.messages.sendReadReceipt(messageId);
+          if (response.data) {
+            setReadStatus({
+              isRead: true,
+              readAt: response.data.readAt,
+              aiAcknowledgment: response.data.aiAcknowledgment,
+              readReceiptSent: true,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+        } catch (err) {
+          await api.messages.markRead(messageId);
+          queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+        } finally {
+          setSendingReceipt(false);
+        }
+      }
+    };
+    sendReadReceipt();
   }, [message, messageId, isDemoMode, queryClient]);
+
+  useEffect(() => {
+    const fetchReadStatus = async () => {
+      if (message && !isDemoMode && message.status !== "unread") {
+        const response = await api.messages.getReadStatus(messageId);
+        if (response.data) {
+          setReadStatus(response.data);
+        }
+      }
+    };
+    fetchReadStatus();
+  }, [message, messageId, isDemoMode]);
 
   const replyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -419,6 +452,56 @@ export default function MessageDetailScreen() {
             <ThemedText type="body" style={styles.resolutionText}>
               {message.resolutionNotes}
             </ThemedText>
+          </Card>
+        ) : null}
+
+        {(readStatus?.isRead || message.readAt) ? (
+          <Card style={styles.readReceiptCard}>
+            <View style={styles.readReceiptHeader}>
+              <Feather name="eye" size={18} color={Colors.secondary} />
+              <ThemedText type="h4" style={{ color: Colors.secondary }}>
+                Read Receipt
+              </ThemedText>
+              {readStatus?.readReceiptSent || message.readReceiptSent ? (
+                <View style={styles.receiptSentBadge}>
+                  <Feather name="check" size={10} color="#FFFFFF" />
+                  <ThemedText type="caption" style={styles.receiptSentText}>
+                    Sent
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.readReceiptInfo}>
+              {(readStatus?.readByName || message.readByName) ? (
+                <View style={styles.readInfoRow}>
+                  <Feather name="user" size={14} color={theme.textSecondary} />
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Read by: {readStatus?.readByName || message.readByName}
+                  </ThemedText>
+                </View>
+              ) : null}
+              {(readStatus?.readAt || message.readAt) ? (
+                <View style={styles.readInfoRow}>
+                  <Feather name="clock" size={14} color={theme.textSecondary} />
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    {formatDate(readStatus?.readAt || message.readAt || "")}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+            {(readStatus?.aiAcknowledgment || message.aiAcknowledgment) ? (
+              <View style={styles.aiAcknowledgmentSection}>
+                <View style={styles.aiAckHeader}>
+                  <Feather name="cpu" size={14} color={Colors.primary} />
+                  <ThemedText type="caption" style={{ color: Colors.primary, fontWeight: "600" }}>
+                    AI Acknowledgment
+                  </ThemedText>
+                </View>
+                <ThemedText type="body" style={styles.aiAcknowledgmentText}>
+                  {readStatus?.aiAcknowledgment || message.aiAcknowledgment}
+                </ThemedText>
+              </View>
+            ) : null}
           </Card>
         ) : null}
 
@@ -669,5 +752,53 @@ const styles = StyleSheet.create({
   },
   resolveButton: {
     backgroundColor: Colors.success,
+  },
+  readReceiptCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.secondary,
+  },
+  readReceiptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  receiptSentBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.success,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+    marginLeft: "auto",
+  },
+  receiptSentText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  readReceiptInfo: {
+    gap: Spacing.xs,
+  },
+  readInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  aiAcknowledgmentSection: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.primary + "10",
+    borderRadius: BorderRadius.sm,
+  },
+  aiAckHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  aiAcknowledgmentText: {
+    lineHeight: 22,
+    fontStyle: "italic",
   },
 });

@@ -236,6 +236,12 @@ export const api = {
       request<CrewMessage>(`/api/crew-messages/${id}/read`, {
         method: "POST",
       }),
+    sendReadReceipt: (id: string) =>
+      request<{ success: boolean; readAt: string; aiAcknowledgment?: string }>(`/api/crew-messages/${id}/read-receipt`, {
+        method: "POST",
+      }),
+    getReadStatus: (id: string) =>
+      request<ReadStatus>(`/api/crew-messages/${id}/read-status`),
     markResolved: (id: string, resolutionNotes?: string) =>
       request<CrewMessage>(`/api/crew-messages/${id}/resolve`, {
         method: "POST",
@@ -508,6 +514,20 @@ export interface CrewMessage {
   aiSummary?: string;
   timeline?: { date: string; action: string; by: string }[];
   resolutionNotes?: string;
+  readAt?: string;
+  readBy?: string;
+  readByName?: string;
+  readReceiptSent?: boolean;
+  aiAcknowledgment?: string;
+}
+
+export interface ReadStatus {
+  isRead: boolean;
+  readAt?: string;
+  readBy?: string;
+  readByName?: string;
+  readReceiptSent?: boolean;
+  aiAcknowledgment?: string;
 }
 
 export interface CreateMessageData {

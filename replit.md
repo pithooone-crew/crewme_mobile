@@ -14,6 +14,7 @@ CrewMe is a React Native/Expo mobile application designed for construction workf
 - Rewards store for redeeming points
 - Messaging system with AI summaries, status tracking, and team communication
 - AI-powered message generation for easy message composition
+- Read receipts with AI-generated acknowledgments for manager confirmations
 
 ## User Preferences
 
