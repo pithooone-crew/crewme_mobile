@@ -250,7 +250,8 @@ export default function ProfileScreen() {
 
           <Pressable
             style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
-            onPress={() => {}}
+            onPress={() => navigation.navigate("Settings")}
+            testID="button-settings"
           >
             <Feather name="settings" size={20} color={theme.text} />
             <ThemedText style={styles.menuText}>Settings</ThemedText>
