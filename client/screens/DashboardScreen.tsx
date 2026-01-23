@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -37,6 +37,48 @@ export default function DashboardScreen() {
   const { theme } = useTheme();
   const { user, isDemoMode } = useAuth();
   const [isClockedIn, setIsClockedIn] = useState(false);
+  const [clockInTime, setClockInTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState("");
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Format elapsed time as "Xh Ym Zs"
+  const formatElapsedTime = (startTime: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - startTime.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
+  // Update timer every second when clocked in
+  useEffect(() => {
+    if (isClockedIn && clockInTime) {
+      timerRef.current = setInterval(() => {
+        setElapsedTime(formatElapsedTime(clockInTime));
+      }, 1000);
+      // Initial update
+      setElapsedTime(formatElapsedTime(clockInTime));
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setElapsedTime("");
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isClockedIn, clockInTime]);
 
   const {
     data: dashboardData,
@@ -59,44 +101,51 @@ export default function DashboardScreen() {
   });
 
   const handleClockIn = async (location: { latitude: number; longitude: number }) => {
+    const now = new Date();
     if (isDemoMode) {
       setIsClockedIn(true);
+      setClockInTime(now);
       return;
     }
     try {
       const response = await api.clock.in(location);
       if (response.data || !response.error) {
         setIsClockedIn(true);
+        setClockInTime(response.data?.clockInTime ? new Date(response.data.clockInTime) : now);
         refetch();
       } else {
         console.log("Clock in API error:", response.error);
-        // Still update UI for better UX, but log the error
         setIsClockedIn(true);
+        setClockInTime(now);
       }
     } catch (err) {
       console.error("Clock in failed:", err);
-      // Update UI anyway for responsiveness
       setIsClockedIn(true);
+      setClockInTime(now);
     }
   };
 
   const handleClockOut = async (location: { latitude: number; longitude: number }) => {
     if (isDemoMode) {
       setIsClockedIn(false);
+      setClockInTime(null);
       return;
     }
     try {
       const response = await api.clock.out(location);
       if (response.data || !response.error) {
         setIsClockedIn(false);
+        setClockInTime(null);
         refetch();
       } else {
         console.log("Clock out API error:", response.error);
         setIsClockedIn(false);
+        setClockInTime(null);
       }
     } catch (err) {
       console.error("Clock out failed:", err);
       setIsClockedIn(false);
+      setClockInTime(null);
     }
   };
 
@@ -183,14 +232,22 @@ export default function DashboardScreen() {
         <ThemedText type="h4" style={styles.clockTitle}>
           {isClockedIn ? "You're on the clock" : "Ready to work?"}
         </ThemedText>
-        {isClockedIn && data?.clockInTime ? (
-          <ThemedText style={[styles.clockTime, { color: theme.textSecondary }]}>
-            Clocked in at{" "}
-            {new Date(data.clockInTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </ThemedText>
+        {isClockedIn && clockInTime ? (
+          <View style={styles.clockInfoContainer}>
+            <ThemedText style={[styles.clockTime, { color: theme.textSecondary }]}>
+              Clocked in at{" "}
+              {clockInTime.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </ThemedText>
+            {elapsedTime ? (
+              <View style={styles.timerContainer}>
+                <Feather name="clock" size={18} color={Colors.success} />
+                <ThemedText style={styles.timerText}>{elapsedTime}</ThemedText>
+              </View>
+            ) : null}
+          </View>
         ) : null}
         <ClockButton
           isClockedIn={isClockedIn}
@@ -313,9 +370,28 @@ const styles = StyleSheet.create({
   clockTitle: {
     marginBottom: Spacing.xs,
   },
-  clockTime: {
+  clockInfoContainer: {
+    alignItems: "center",
     marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  clockTime: {
     fontSize: 14,
+  },
+  timerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    backgroundColor: Colors.success + "15",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  timerText: {
+    color: Colors.success,
+    fontSize: 18,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
   },
   statsRow: {
     flexDirection: "row",
