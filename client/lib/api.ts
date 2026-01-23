@@ -54,6 +54,76 @@ export const api = {
       }),
     logout: () => request("/api/mobile/logout", { method: "POST" }),
     me: () => request<User>("/api/mobile/me"),
+    testAccounts: () => request<TestAccount[]>("/api/mobile/test-accounts"),
+  },
+
+  projects: {
+    list: (filters?: { status?: string }) =>
+      request<Project[]>(`/api/mobile/projects?${new URLSearchParams(filters as Record<string, string>).toString()}`),
+    get: (id: string) => request<Project>(`/api/mobile/projects/${id}`),
+    create: (data: Partial<Project>) =>
+      request<Project>("/api/mobile/projects", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<Project>) =>
+      request<Project>(`/api/mobile/projects/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  crew: {
+    list: (filters?: { skill?: string; role?: string }) =>
+      request<CrewMember[]>(`/api/mobile/crew?${new URLSearchParams(filters as Record<string, string>).toString()}`),
+    get: (id: string) => request<CrewMember>(`/api/mobile/crew/${id}`),
+    availability: (id: string) => request<CrewAvailability>(`/api/mobile/crew/${id}/availability`),
+  },
+
+  timeTracking: {
+    entries: (filters?: { startDate?: string; endDate?: string }) =>
+      request<TimeEntry[]>(`/api/mobile/time-entries?${new URLSearchParams(filters as Record<string, string>).toString()}`),
+    current: () => request<TimeEntry | null>("/api/mobile/time-entries/current"),
+    submit: (entryId: string) =>
+      request<TimeEntry>(`/api/mobile/time-entries/${entryId}/submit`, { method: "POST" }),
+  },
+
+  inAppNotifications: {
+    list: () => request<InAppNotification[]>("/api/notifications"),
+    markRead: (id: string) =>
+      request<{ success: boolean }>(`/api/notifications/${id}/read`, { method: "POST" }),
+    markAllRead: () =>
+      request<{ success: boolean }>("/api/notifications/read-all", { method: "POST" }),
+  },
+
+  ai: {
+    teamBuilder: (projectId: string, requirements: any) =>
+      request<AITeamSuggestion>("/api/ai/team-builder", {
+        method: "POST",
+        body: JSON.stringify({ projectId, requirements }),
+      }),
+    scheduleOptimizer: (projectId: string) =>
+      request<AIScheduleSuggestion>("/api/ai/schedule-optimizer/run", {
+        method: "POST",
+        body: JSON.stringify({ projectId }),
+      }),
+    dailyReport: () =>
+      request<AIDailyReport>("/api/ai/daily-report/generate", { method: "POST" }),
+    photoAnalysis: (photoUri: string) =>
+      request<AIPhotoAnalysis>("/api/ai/photo-analysis/analyze", {
+        method: "POST",
+        body: JSON.stringify({ photoUri }),
+      }),
+    skillsGap: (userId?: string) =>
+      request<AISkillsGap>("/api/ai/skills-gap/analyze", {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      }),
+  },
+
+  weather: {
+    alerts: (projectId?: string) =>
+      request<WeatherAlert[]>(`/api/ai/self-healing/weather${projectId ? `?projectId=${projectId}` : ""}`),
   },
 
   dashboard: {
@@ -282,4 +352,111 @@ export interface PerformanceHistory {
     hoursWorked: number;
     xpEarned: number;
   }[];
+}
+
+export interface TestAccount {
+  email: string;
+  password: string;
+  role: string;
+  name: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: "planning" | "active" | "completed" | "on_hold";
+  location: { address: string; latitude: number; longitude: number };
+  startDate: string;
+  endDate: string;
+  budget?: number;
+  client?: string;
+  progress: number;
+  tasksCount: number;
+  crewCount: number;
+}
+
+export interface CrewMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: string;
+  skills: string[];
+  hourlyRate?: number;
+  avatarUrl?: string;
+  rating: number;
+  tasksCompleted: number;
+  xp: number;
+  level: number;
+}
+
+export interface CrewAvailability {
+  userId: string;
+  available: boolean;
+  schedule: { day: string; start: string; end: string }[];
+}
+
+export interface TimeEntry {
+  id: string;
+  userId: string;
+  projectId?: string;
+  projectName?: string;
+  taskId?: string;
+  taskName?: string;
+  clockIn: string;
+  clockOut?: string;
+  hoursWorked?: number;
+  status: "active" | "submitted" | "approved" | "rejected";
+  notes?: string;
+}
+
+export interface InAppNotification {
+  id: string;
+  type: "task" | "achievement" | "schedule" | "announcement" | "weather";
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  data?: Record<string, any>;
+}
+
+export interface AITeamSuggestion {
+  team: { userId: string; name: string; role: string; skills: string[] }[];
+  reasoning: string;
+}
+
+export interface AIScheduleSuggestion {
+  optimizedTasks: { taskId: string; suggestedDate: string; reasoning: string }[];
+  conflicts: string[];
+}
+
+export interface AIDailyReport {
+  summary: string;
+  projectUpdates: { projectName: string; progress: number; highlights: string[] }[];
+  attendance: { present: number; absent: number; late: number };
+  tasksCompleted: number;
+  tasksPending: number;
+}
+
+export interface AIPhotoAnalysis {
+  description: string;
+  safetyIssues: string[];
+  progressEstimate: number;
+  suggestions: string[];
+}
+
+export interface AISkillsGap {
+  gaps: { skill: string; currentLevel: number; requiredLevel: number; trainingRecommendation: string }[];
+  recommendations: string[];
+}
+
+export interface WeatherAlert {
+  id: string;
+  projectId?: string;
+  severity: "low" | "medium" | "high";
+  title: string;
+  message: string;
+  effectiveDate: string;
 }
