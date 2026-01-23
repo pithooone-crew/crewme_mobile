@@ -361,6 +361,12 @@ export default function DashboardScreen() {
             <ThemedText style={styles.quickActionText}>AI Tools</ThemedText>
           </Pressable>
         ) : null}
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("More")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + "20" }]}>
+            <Feather name="grid" size={20} color={Colors.primary} />
+          </View>
+          <ThemedText style={styles.quickActionText}>More</ThemedText>
+        </Pressable>
       </View>
 
       <View style={styles.statsRow}>
