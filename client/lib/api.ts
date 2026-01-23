@@ -135,6 +135,18 @@ export const api = {
     certifications: () => request<Certification[]>("/api/mobile/profile/certifications"),
     performance: () => request<PerformanceHistory>("/api/mobile/profile/performance"),
   },
+
+  notifications: {
+    register: (pushToken: string, platform: string) =>
+      request<{ success: boolean }>("/api/mobile/notifications/register", {
+        method: "POST",
+        body: JSON.stringify({ pushToken, platform }),
+      }),
+    unregister: () =>
+      request<{ success: boolean }>("/api/mobile/notifications/unregister", {
+        method: "POST",
+      }),
+  },
 };
 
 export interface Task {

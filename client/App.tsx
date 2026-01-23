@@ -19,6 +19,7 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
@@ -45,16 +46,18 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SafeAreaProvider>
-            <GestureHandlerRootView style={styles.root}>
-              <KeyboardProvider>
-                <NavigationContainer>
-                  <RootStackNavigator />
-                </NavigationContainer>
-                <StatusBar style="auto" />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </SafeAreaProvider>
+          <NotificationProvider>
+            <SafeAreaProvider>
+              <GestureHandlerRootView style={styles.root}>
+                <KeyboardProvider>
+                  <NavigationContainer>
+                    <RootStackNavigator />
+                  </NavigationContainer>
+                  <StatusBar style="auto" />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </SafeAreaProvider>
+          </NotificationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
