@@ -4,10 +4,15 @@ export const Colors = {
   primary: "#FF6B35",
   primaryDark: "#D14D1F",
   secondary: "#004E89",
+  accent: "#F59E0B",
   xpGold: "#FBBF24",
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
+  text: "#1A1D1F",
+  textSecondary: "#6B7280",
+  background: "#F8F9FA",
+  border: "#E1E4E8",
   light: {
     text: "#1A1D1F",
     textSecondary: "#6B7280",
@@ -124,24 +129,52 @@ export const Shadows = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: "system-ui",
-    serif: "ui-serif",
-    rounded: "ui-rounded",
-    mono: "ui-monospace",
-  },
-  default: {
-    sans: "normal",
-    serif: "serif",
-    rounded: "normal",
-    mono: "monospace",
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const FontSizes = {
+  xs: 11,
+  sm: 13,
+  md: 15,
+  lg: 17,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+};
+
+export const FontWeights = {
+  regular: "400" as const,
+  medium: "500" as const,
+  semiBold: "600" as const,
+  bold: "700" as const,
+};
+
+export const Fonts = {
+  regular: Platform.select({
+    ios: "System",
+    android: "Roboto",
+    default: "System",
+  }),
+  medium: Platform.select({
+    ios: "System",
+    android: "Roboto",
+    default: "System",
+  }),
+  semiBold: Platform.select({
+    ios: "System",
+    android: "Roboto",
+    default: "System",
+  }),
+  bold: Platform.select({
+    ios: "System",
+    android: "Roboto",
+    default: "System",
+  }),
+  sans: Platform.select({
+    ios: "system-ui",
+    web: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    default: "normal",
+  }),
+  mono: Platform.select({
+    ios: "ui-monospace",
+    web: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    default: "monospace",
+  }),
+};
