@@ -28,13 +28,16 @@ export default function NotificationsScreen() {
     queryFn: async () => {
       try {
         const result = await api.inAppNotifications.list();
-        if ("error" in result) return mockNotifications;
+        if ("error" in result || !Array.isArray(result)) return mockNotifications;
         return result;
       } catch {
         return mockNotifications;
       }
     },
   });
+
+  // Ensure notifications is always an array
+  const safeNotifications = Array.isArray(notifications) ? notifications : mockNotifications;
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => api.inAppNotifications.markRead(id),
@@ -76,7 +79,7 @@ export default function NotificationsScreen() {
     return date.toLocaleDateString();
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = safeNotifications.filter((n) => !n.isRead).length;
 
   return (
     <View style={styles.container}>
@@ -94,7 +97,7 @@ export default function NotificationsScreen() {
           </View>
         ) : null}
 
-        {notifications.map((notification) => {
+        {safeNotifications.map((notification) => {
           const icon = typeIcons[notification.type] || { name: "bell", color: Colors.primary };
           return (
             <Pressable
@@ -126,7 +129,7 @@ export default function NotificationsScreen() {
           );
         })}
 
-        {notifications.length === 0 ? (
+        {safeNotifications.length === 0 ? (
           <View style={styles.emptyState}>
             <Feather name="bell-off" size={48} color={Colors.textSecondary} />
             <Text style={styles.emptyTitle}>No Notifications</Text>

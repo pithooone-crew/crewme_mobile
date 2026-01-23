@@ -39,15 +39,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   try {
-    // Get Expo push token
+    // Get Expo push token - requires projectId in Expo Go
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    
+    // Skip push token if no projectId (common in Expo Go)
+    if (!projectId) {
+      console.log("No projectId found - push notifications unavailable in Expo Go");
+      return null;
+    }
+    
     const pushTokenData = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
     token = pushTokenData.data;
     console.log("Push token:", token);
   } catch (error) {
-    console.error("Error getting push token:", error);
+    // Gracefully handle - push notifications may not work in Expo Go
+    console.log("Push notifications not available:", (error as Error).message);
     return null;
   }
 
