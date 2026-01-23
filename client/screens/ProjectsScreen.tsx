@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Alert } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { api, Project } from "@/lib/api";
 import { mockProjects } from "@/lib/mockData";
 import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
 import { Card } from "@/components/Card";
+import { useRBAC } from "@/hooks/useRBAC";
 
 type StatusFilter = "all" | "planning" | "active" | "completed" | "on_hold";
 
@@ -23,6 +24,10 @@ export default function ProjectsScreen() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const { isAtLeast } = useRBAC();
+
+  const canEditProjects = isAtLeast.projectManager;
+  const canViewBudget = isAtLeast.foreman;
 
   const { data: projects = mockProjects, refetch } = useQuery({
     queryKey: ["/api/mobile/projects", filter],
@@ -77,7 +82,15 @@ export default function ProjectsScreen() {
           ))}
         </ScrollView>
 
-        <Text style={styles.countText}>{filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.countText}>{filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}</Text>
+          {canEditProjects ? (
+            <Pressable style={styles.addButton} onPress={() => Alert.alert("Add Project", "This feature connects to the backend to create projects.")}>
+              <Feather name="plus" size={16} color="#fff" />
+              <Text style={styles.addButtonText}>Add</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         {filteredProjects.map((project) => (
           <Card key={project.id} style={styles.projectCard}>
@@ -131,11 +144,13 @@ export default function ProjectsScreen() {
                 <Text style={styles.statValue}>{project.crewCount}</Text>
                 <Text style={styles.statLabel}>Crew</Text>
               </View>
-              <View style={styles.statItem}>
-                <Feather name="dollar-sign" size={16} color={Colors.accent} />
-                <Text style={styles.statValue}>{formatBudget(project.budget)}</Text>
-                <Text style={styles.statLabel}>Budget</Text>
-              </View>
+              {canViewBudget ? (
+                <View style={styles.statItem}>
+                  <Feather name="dollar-sign" size={16} color={Colors.accent} />
+                  <Text style={styles.statValue}>{formatBudget(project.budget)}</Text>
+                  <Text style={styles.statLabel}>Budget</Text>
+                </View>
+              ) : null}
             </View>
           </Card>
         ))}
@@ -151,6 +166,26 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.md,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: 4,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: FontSizes.sm,
   },
   filterContainer: {
     marginBottom: Spacing.md,

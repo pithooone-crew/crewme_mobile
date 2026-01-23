@@ -8,6 +8,7 @@ import { api, CrewMember } from "@/lib/api";
 import { mockCrewMembers } from "@/lib/mockData";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { Card } from "@/components/Card";
+import { useRBAC } from "@/hooks/useRBAC";
 
 const roleLabels: Record<string, string> = {
   crew_member: "Crew Member",
@@ -30,6 +31,10 @@ export default function CrewScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const { isAtLeast } = useRBAC();
+
+  const canContactCrew = isAtLeast.lead;
+  const canViewAllDetails = isAtLeast.foreman;
 
   const { data: crew = mockCrewMembers, refetch } = useQuery({
     queryKey: ["/api/mobile/crew"],
@@ -133,20 +138,27 @@ export default function CrewScreen() {
               </View>
             </View>
 
-            <View style={styles.contactRow}>
-              <Pressable style={styles.contactButton}>
-                <Feather name="phone" size={16} color={Colors.primary} />
-                <Text style={styles.contactText}>Call</Text>
-              </Pressable>
-              <Pressable style={styles.contactButton}>
-                <Feather name="mail" size={16} color={Colors.primary} />
-                <Text style={styles.contactText}>Email</Text>
-              </Pressable>
-              <Pressable style={styles.contactButton}>
-                <Feather name="message-circle" size={16} color={Colors.primary} />
-                <Text style={styles.contactText}>Message</Text>
-              </Pressable>
-            </View>
+            {canContactCrew ? (
+              <View style={styles.contactRow}>
+                <Pressable style={styles.contactButton}>
+                  <Feather name="phone" size={16} color={Colors.primary} />
+                  <Text style={styles.contactText}>Call</Text>
+                </Pressable>
+                <Pressable style={styles.contactButton}>
+                  <Feather name="mail" size={16} color={Colors.primary} />
+                  <Text style={styles.contactText}>Email</Text>
+                </Pressable>
+                <Pressable style={styles.contactButton}>
+                  <Feather name="message-circle" size={16} color={Colors.primary} />
+                  <Text style={styles.contactText}>Message</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.contactLocked}>
+                <Feather name="lock" size={14} color={Colors.textSecondary} />
+                <Text style={styles.contactLockedText}>Lead+ access required to contact</Text>
+              </View>
+            )}
           </Card>
         ))}
       </ScrollView>
@@ -290,5 +302,18 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: FontSizes.sm,
     color: Colors.primary,
+  },
+  contactLocked: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderColor: Colors.border,
+  },
+  contactLockedText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
   },
 });

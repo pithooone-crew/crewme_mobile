@@ -23,6 +23,7 @@ import { DashboardSkeleton } from "@/components/LoadingSkeleton";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { useRBAC } from "@/hooks/useRBAC";
 import { api, Task, Badge } from "@/lib/api";
 import { mockDashboard } from "@/lib/mockData";
 import { HomeStackParamList } from "@/navigation/HomeStackNavigator";
@@ -36,6 +37,7 @@ export default function DashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { user, isDemoMode } = useAuth();
+  const { isAtLeast, userRole, getRoleLabel } = useRBAC();
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState("");
@@ -263,24 +265,51 @@ export default function DashboardScreen() {
           </View>
           <ThemedText style={styles.quickActionText}>Projects</ThemedText>
         </Pressable>
-        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Crew")}>
-          <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + "20" }]}>
-            <Feather name="users" size={20} color={Colors.secondary} />
-          </View>
-          <ThemedText style={styles.quickActionText}>Crew</ThemedText>
-        </Pressable>
-        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Timesheet")}>
-          <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent + "20" }]}>
-            <Feather name="clock" size={20} color={Colors.accent} />
-          </View>
-          <ThemedText style={styles.quickActionText}>Timesheet</ThemedText>
-        </Pressable>
-        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Notifications")}>
-          <View style={[styles.quickActionIcon, { backgroundColor: "#7B1FA2" + "20" }]}>
-            <Feather name="bell" size={20} color="#7B1FA2" />
-          </View>
-          <ThemedText style={styles.quickActionText}>Alerts</ThemedText>
-        </Pressable>
+        {isAtLeast.lead ? (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Crew")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + "20" }]}>
+              <Feather name="users" size={20} color={Colors.secondary} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Crew</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Timesheet")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent + "20" }]}>
+              <Feather name="clock" size={20} color={Colors.accent} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Timesheet</ThemedText>
+          </Pressable>
+        )}
+        {isAtLeast.lead ? (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Timesheet")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent + "20" }]}>
+              <Feather name="clock" size={20} color={Colors.accent} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Timesheet</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Notifications")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: "#7B1FA2" + "20" }]}>
+              <Feather name="bell" size={20} color="#7B1FA2" />
+            </View>
+            <ThemedText style={styles.quickActionText}>Alerts</ThemedText>
+          </Pressable>
+        )}
+        {isAtLeast.lead ? (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("AIFeatures")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: "#00BFA5" + "20" }]}>
+              <Feather name="cpu" size={20} color="#00BFA5" />
+            </View>
+            <ThemedText style={styles.quickActionText}>AI Tools</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Projects")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + "20" }]}>
+              <Feather name="award" size={20} color={Colors.primary} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Progress</ThemedText>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.statsRow}>

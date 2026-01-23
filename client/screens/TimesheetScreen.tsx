@@ -8,6 +8,7 @@ import { api, TimeEntry } from "@/lib/api";
 import { mockTimeEntries } from "@/lib/mockData";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { Card } from "@/components/Card";
+import { useRBAC } from "@/hooks/useRBAC";
 
 type ViewMode = "daily" | "weekly";
 
@@ -23,6 +24,11 @@ export default function TimesheetScreen() {
   const insets = useSafeAreaInsets();
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [refreshing, setRefreshing] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+  const { isAtLeast } = useRBAC();
+
+  const canViewAllTimesheets = isAtLeast.projectManager;
+  const canApproveTimesheets = isAtLeast.foreman;
 
   const { data: entries = mockTimeEntries, refetch } = useQuery({
     queryKey: ["/api/mobile/time-entries"],
@@ -87,6 +93,24 @@ export default function TimesheetScreen() {
             </View>
           </View>
         </Card>
+
+        {canViewAllTimesheets ? (
+          <View style={styles.scopeToggle}>
+            <Pressable
+              style={[styles.scopeButton, !viewAll && styles.scopeButtonActive]}
+              onPress={() => setViewAll(false)}
+            >
+              <Text style={[styles.scopeText, !viewAll && styles.scopeTextActive]}>My Entries</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.scopeButton, viewAll && styles.scopeButtonActive]}
+              onPress={() => setViewAll(true)}
+            >
+              <Feather name="users" size={14} color={viewAll ? "#fff" : Colors.textSecondary} />
+              <Text style={[styles.scopeText, viewAll && styles.scopeTextActive]}>All Crew</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.viewToggle}>
           <Pressable
@@ -197,6 +221,32 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
     backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  scopeToggle: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: 4,
+    marginBottom: Spacing.sm,
+  },
+  scopeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    gap: 4,
+  },
+  scopeButtonActive: {
+    backgroundColor: Colors.secondary,
+  },
+  scopeText: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+  },
+  scopeTextActive: {
+    color: "#fff",
   },
   viewToggle: {
     flexDirection: "row",
