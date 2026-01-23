@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Pressable, ActivityIndicator, Platform, View } from "react-native";
+import { StyleSheet, Pressable, ActivityIndicator, Platform, View, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
@@ -10,7 +10,6 @@ import Animated, {
   withRepeat,
   withSequence,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
@@ -25,6 +24,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const scale = useSharedValue(1);
   const pulse = useSharedValue(1);
 
@@ -55,36 +55,74 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
     scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
+  const openSettings = async () => {
+    if (Platform.OS !== "web") {
+      try {
+        await Linking.openSettings();
+      } catch {
+        // Settings not available
+      }
+    }
+  };
+
   const handlePress = async () => {
     setError(null);
+    setPermissionDenied(false);
     setIsLoading(true);
 
     try {
       let coords = { latitude: 0, longitude: 0 };
 
-      // Try to get location, but fall back to default if on web or if it fails
       if (Platform.OS !== "web") {
-        try {
+        // Check current permission status
+        const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+        
+        let finalStatus = existingStatus;
+        if (existingStatus !== "granted") {
           const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const location = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            });
-            coords = {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            };
+          finalStatus = status;
+        }
+
+        if (finalStatus !== "granted") {
+          setPermissionDenied(true);
+          setError("Location access required for clock in/out");
+          if (Platform.OS !== "web") {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
-        } catch (locErr) {
-          console.log("Location error, using default coordinates");
+          setIsLoading(false);
+          return;
+        }
+
+        // Get location with timeout
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          coords = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+        } catch (locError) {
+          // If getting precise location fails, try last known
+          try {
+            const lastLocation = await Location.getLastKnownPositionAsync();
+            if (lastLocation) {
+              coords = {
+                latitude: lastLocation.coords.latitude,
+                longitude: lastLocation.coords.longitude,
+              };
+            }
+          } catch {
+            // Use default coords if all else fails
+          }
         }
       } else {
-        // On web, try browser geolocation API
+        // Web fallback
         try {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(resolve, reject, {
-                timeout: 5000,
+                timeout: 10000,
                 enableHighAccuracy: false,
               });
             } else {
@@ -95,11 +133,12 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           };
-        } catch (webLocErr) {
-          console.log("Web location error, using default coordinates");
+        } catch {
+          // Use default coords on web
         }
       }
 
+      // Perform clock action
       if (isClockedIn) {
         await onClockOut(coords);
       } else {
@@ -111,7 +150,7 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
       }
     } catch (err) {
       console.error("Clock action error:", err);
-      setError("Clock action failed. Please try again.");
+      setError("Failed to clock. Please try again.");
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -150,7 +189,14 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
         )}
       </AnimatedPressable>
       {error ? (
-        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <View style={styles.errorContainer}>
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          {permissionDenied && Platform.OS !== "web" ? (
+            <Pressable onPress={openSettings} style={styles.settingsLink}>
+              <ThemedText style={styles.settingsText}>Open Settings</ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -175,10 +221,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  errorContainer: {
+    alignItems: "center",
+    marginTop: Spacing.sm,
+  },
   errorText: {
     color: Colors.error,
     fontSize: 12,
-    marginTop: Spacing.sm,
     textAlign: "center",
+  },
+  settingsLink: {
+    marginTop: Spacing.xs,
+    padding: Spacing.xs,
+  },
+  settingsText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
