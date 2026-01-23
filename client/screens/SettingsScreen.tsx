@@ -1,23 +1,147 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { Card } from "@/components/Card";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+
+const SETTINGS_STORAGE_KEY = "@crewme_settings";
+
+interface Settings {
+  pushNotifications: boolean;
+  taskReminders: boolean;
+  scheduleAlerts: boolean;
+  achievementAlerts: boolean;
+  weatherAlerts: boolean;
+  messageAlerts: boolean;
+  readReceipts: boolean;
+  hapticFeedback: boolean;
+  soundEffects: boolean;
+  locationServices: boolean;
+  autoClockReminder: boolean;
+}
+
+const defaultSettings: Settings = {
+  pushNotifications: true,
+  taskReminders: true,
+  scheduleAlerts: true,
+  achievementAlerts: true,
+  weatherAlerts: true,
+  messageAlerts: true,
+  readReceipts: true,
+  hapticFeedback: true,
+  soundEffects: true,
+  locationServices: true,
+  autoClockReminder: true,
+};
 
 export default function SettingsScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   
-  const [darkMode, setDarkMode] = useState(false);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [taskReminders, setTaskReminders] = useState(true);
-  const [scheduleAlerts, setScheduleAlerts] = useState(true);
-  const [achievementAlerts, setAchievementAlerts] = useState(true);
-  const [weatherAlerts, setWeatherAlerts] = useState(true);
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (stored) {
+        setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateSetting = useCallback(async (key: keyof Settings, value: boolean) => {
+    if (settings.hapticFeedback && Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    
+    try {
+      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+    }
+  }, [settings]);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Sign Out", 
+          style: "destructive",
+          onPress: async () => {
+            if (settings.hapticFeedback && Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+            await logout();
+          }
+        }
+      ]
+    );
+  };
+
+  const handleResetSettings = () => {
+    Alert.alert(
+      "Reset Settings",
+      "This will reset all settings to their defaults. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reset", 
+          style: "destructive",
+          onPress: async () => {
+            setSettings(defaultSettings);
+            await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
+            if (Platform.OS !== "web") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const openPrivacyPolicy = async () => {
+    try {
+      await Linking.openURL("https://crewme.app/privacy");
+    } catch {
+      Alert.alert("Error", "Could not open privacy policy");
+    }
+  };
+
+  const openTermsOfService = async () => {
+    try {
+      await Linking.openURL("https://crewme.app/terms");
+    } catch {
+      Alert.alert("Error", "Could not open terms of service");
+    }
+  };
 
   const SettingRow = ({ 
     icon, 
@@ -26,7 +150,8 @@ export default function SettingsScreen() {
     value, 
     onToggle,
     showArrow = false,
-    onPress 
+    onPress,
+    disabled = false,
   }: { 
     icon: keyof typeof Feather.glyphMap; 
     title: string; 
@@ -35,14 +160,20 @@ export default function SettingsScreen() {
     onToggle?: (value: boolean) => void;
     showArrow?: boolean;
     onPress?: () => void;
+    disabled?: boolean;
   }) => (
-    <Pressable style={styles.settingRow} onPress={onPress} disabled={!onPress && !onToggle}>
-      <View style={styles.settingIcon}>
-        <Feather name={icon} size={20} color={Colors.primary} />
+    <Pressable 
+      style={[styles.settingRow, disabled && styles.settingRowDisabled]} 
+      onPress={onPress} 
+      disabled={disabled || (!onPress && !onToggle)}
+      testID={`setting-${title.toLowerCase().replace(/\s+/g, "-")}`}
+    >
+      <View style={[styles.settingIcon, { backgroundColor: `${Colors.primary}15` }]}>
+        <Feather name={icon} size={20} color={disabled ? Colors.textSecondary : Colors.primary} />
       </View>
       <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
+        <ThemedText style={[styles.settingTitle, disabled && styles.settingTitleDisabled]}>{title}</ThemedText>
+        {subtitle ? <ThemedText style={styles.settingSubtitle}>{subtitle}</ThemedText> : null}
       </View>
       {onToggle ? (
         <Switch
@@ -50,139 +181,184 @@ export default function SettingsScreen() {
           onValueChange={onToggle}
           trackColor={{ false: Colors.border, true: Colors.primary }}
           thumbColor="#fff"
+          disabled={disabled}
         />
       ) : null}
       {showArrow ? <Feather name="chevron-right" size={20} color={Colors.textSecondary} /> : null}
     </Pressable>
   );
 
+  const SectionHeader = ({ title }: { title: string }) => (
+    <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+  );
+
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + Spacing.md, paddingBottom: insets.bottom + Spacing.xl }]}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { 
+            paddingTop: headerHeight + Spacing.md, 
+            paddingBottom: tabBarHeight + Spacing.xl 
+          }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Appearance</Text>
-          <SettingRow
-            icon="moon"
-            title="Dark Mode"
-            subtitle="Use dark theme"
-            value={darkMode}
-            onToggle={setDarkMode}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+          <SectionHeader title="Notifications" />
           <SettingRow
             icon="bell"
             title="Push Notifications"
             subtitle="Enable all notifications"
-            value={pushNotifications}
-            onToggle={setPushNotifications}
+            value={settings.pushNotifications}
+            onToggle={(v) => updateSetting("pushNotifications", v)}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="mail"
+            title="Message Alerts"
+            subtitle="New messages from your crew"
+            value={settings.messageAlerts}
+            onToggle={(v) => updateSetting("messageAlerts", v)}
+            disabled={!settings.pushNotifications}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="clipboard"
             title="Task Reminders"
             subtitle="Get reminders for upcoming tasks"
-            value={taskReminders}
-            onToggle={setTaskReminders}
+            value={settings.taskReminders}
+            onToggle={(v) => updateSetting("taskReminders", v)}
+            disabled={!settings.pushNotifications}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="calendar"
             title="Schedule Alerts"
             subtitle="Notify about schedule changes"
-            value={scheduleAlerts}
-            onToggle={setScheduleAlerts}
+            value={settings.scheduleAlerts}
+            onToggle={(v) => updateSetting("scheduleAlerts", v)}
+            disabled={!settings.pushNotifications}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="award"
             title="Achievement Alerts"
             subtitle="Celebrate your accomplishments"
-            value={achievementAlerts}
-            onToggle={setAchievementAlerts}
+            value={settings.achievementAlerts}
+            onToggle={(v) => updateSetting("achievementAlerts", v)}
+            disabled={!settings.pushNotifications}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="cloud"
             title="Weather Alerts"
             subtitle="Get weather-related notifications"
-            value={weatherAlerts}
-            onToggle={setWeatherAlerts}
+            value={settings.weatherAlerts}
+            onToggle={(v) => updateSetting("weatherAlerts", v)}
+            disabled={!settings.pushNotifications}
           />
         </Card>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <SectionHeader title="Messages" />
           <SettingRow
-            icon="user"
-            title="Edit Profile"
-            subtitle="Update your personal information"
-            showArrow
-            onPress={() => {}}
+            icon="check-circle"
+            title="Send Read Receipts"
+            subtitle="Let senders know when you read messages"
+            value={settings.readReceipts}
+            onToggle={(v) => updateSetting("readReceipts", v)}
+          />
+        </Card>
+
+        <Card style={styles.section}>
+          <SectionHeader title="Time Clock" />
+          <SettingRow
+            icon="map-pin"
+            title="Location Services"
+            subtitle="Enable GPS for clock in/out verification"
+            value={settings.locationServices}
+            onToggle={(v) => updateSetting("locationServices", v)}
           />
           <View style={styles.divider} />
           <SettingRow
-            icon="shield"
-            title="Privacy & Security"
-            subtitle="Manage your privacy settings"
-            showArrow
-            onPress={() => {}}
+            icon="clock"
+            title="Auto Clock Reminder"
+            subtitle="Remind me to clock in when arriving at site"
+            value={settings.autoClockReminder}
+            onToggle={(v) => updateSetting("autoClockReminder", v)}
+            disabled={!settings.locationServices}
+          />
+        </Card>
+
+        <Card style={styles.section}>
+          <SectionHeader title="App Experience" />
+          <SettingRow
+            icon="smartphone"
+            title="Haptic Feedback"
+            subtitle="Vibration feedback on actions"
+            value={settings.hapticFeedback}
+            onToggle={(v) => updateSetting("hapticFeedback", v)}
           />
           <View style={styles.divider} />
+          <SettingRow
+            icon="volume-2"
+            title="Sound Effects"
+            subtitle="Play sounds for notifications"
+            value={settings.soundEffects}
+            onToggle={(v) => updateSetting("soundEffects", v)}
+          />
+        </Card>
+
+        <Card style={styles.section}>
+          <SectionHeader title="Legal" />
           <SettingRow
             icon="file-text"
-            title="Certifications"
-            subtitle="Manage your certifications"
+            title="Privacy Policy"
             showArrow
-            onPress={() => {}}
+            onPress={openPrivacyPolicy}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="book"
+            title="Terms of Service"
+            showArrow
+            onPress={openTermsOfService}
           />
         </Card>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <SectionHeader title="Data & Storage" />
           <SettingRow
-            icon="help-circle"
-            title="Help Center"
+            icon="refresh-cw"
+            title="Reset Settings"
+            subtitle="Restore all settings to defaults"
             showArrow
-            onPress={() => {}}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="message-circle"
-            title="Contact Support"
-            showArrow
-            onPress={() => {}}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="info"
-            title="About CrewMe"
-            subtitle="Version 1.0.0"
-            showArrow
-            onPress={() => {}}
+            onPress={handleResetSettings}
           />
         </Card>
 
-        <Pressable style={styles.logoutButton} onPress={logout}>
+        <Pressable 
+          style={styles.logoutButton} 
+          onPress={handleLogout}
+          testID="button-logout"
+        >
           <Feather name="log-out" size={20} color="#C62828" />
-          <Text style={styles.logoutText}>Sign Out</Text>
+          <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
         </Pressable>
 
-        <Text style={styles.footerText}>Signed in as {user?.email || "demo@crewme.app"}</Text>
+        <ThemedText style={styles.footerText}>
+          Signed in as {user?.email || "demo@crewme.app"}
+        </ThemedText>
+        <ThemedText style={styles.versionText}>CrewMe v1.0.0</ThemedText>
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingHorizontal: Spacing.md,
@@ -203,11 +379,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.sm,
   },
+  settingRowDisabled: {
+    opacity: 0.5,
+  },
   settingIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: `${Colors.primary}15`,
     justifyContent: "center",
     alignItems: "center",
     marginRight: Spacing.md,
@@ -218,7 +396,9 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontWeight: "600",
     fontSize: FontSizes.md,
-    color: Colors.text,
+  },
+  settingTitleDisabled: {
+    color: Colors.textSecondary,
   },
   settingSubtitle: {
     fontSize: FontSizes.sm,
@@ -251,5 +431,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: "center",
     marginTop: Spacing.md,
+  },
+  versionText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginTop: Spacing.xs,
+    opacity: 0.6,
   },
 });
