@@ -12,6 +12,7 @@ import MessagesScreen from "@/screens/MessagesScreen";
 import ComposeMessageScreen from "@/screens/ComposeMessageScreen";
 import MessageDetailScreen from "@/screens/MessageDetailScreen";
 import TemplatesScreen from "@/screens/TemplatesScreen";
+import MoreScreen from "@/screens/MoreScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -28,6 +29,7 @@ export type HomeStackParamList = {
   ComposeMessage: undefined;
   MessageDetail: { messageId: string };
   Templates: undefined;
+  More: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -119,6 +121,13 @@ export default function HomeStackNavigator() {
         component={TemplatesScreen}
         options={{
           headerTitle: "Project Templates",
+        }}
+      />
+      <Stack.Screen
+        name="More"
+        component={MoreScreen}
+        options={{
+          headerTitle: "All Features",
         }}
       />
     </Stack.Navigator>

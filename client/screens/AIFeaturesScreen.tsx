@@ -1,15 +1,16 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Modal } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
-import { api, AIDailyReport } from "@/lib/api";
-import { mockDailyReport } from "@/lib/mockData";
-import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import { api, AIDailyReport, Project } from "@/lib/api";
+import { mockDailyReport, mockProjects } from "@/lib/mockData";
+import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 
@@ -71,10 +72,18 @@ export default function AIFeaturesScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   const [report, setReport] = useState<AIDailyReport | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+
+  const { data: projectsData } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const projects = projectsData || mockProjects;
 
   const userRoleIndex = roleHierarchy.indexOf(user?.role || "crew_member");
 
@@ -104,6 +113,11 @@ export default function AIFeaturesScreen() {
     }
   };
 
+  const handleProjectSelect = (project: Project) => {
+    setSelectedProject(project);
+    setShowProjectPicker(false);
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -119,6 +133,93 @@ export default function AIFeaturesScreen() {
         Leverage artificial intelligence to optimize your workflow
       </ThemedText>
 
+      <Card style={styles.projectSelector}>
+        <ThemedText style={[styles.projectSelectorLabel, { color: theme.textSecondary }]}>
+          Project Context for AI Analysis
+        </ThemedText>
+        <Pressable
+          style={[styles.projectSelectorButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+          onPress={() => setShowProjectPicker(true)}
+        >
+          <Feather name="folder" size={18} color={selectedProject ? Colors.primary : theme.textSecondary} />
+          <ThemedText style={styles.projectSelectorText} numberOfLines={1}>
+            {selectedProject ? selectedProject.name : "All Projects (General Analysis)"}
+          </ThemedText>
+          <Feather name="chevron-down" size={18} color={theme.textSecondary} />
+        </Pressable>
+        {selectedProject ? (
+          <ThemedText style={[styles.projectHint, { color: theme.textSecondary }]}>
+            AI insights will focus on {selectedProject.name}
+          </ThemedText>
+        ) : null}
+      </Card>
+
+      <Modal
+        visible={showProjectPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowProjectPicker(false)}
+      >
+        <ThemedView style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <ThemedText type="h3">Select Project</ThemedText>
+            <Pressable onPress={() => setShowProjectPicker(false)}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            <Pressable
+              style={[
+                styles.projectOption,
+                { backgroundColor: !selectedProject ? `${Colors.primary}15` : theme.backgroundDefault },
+              ]}
+              onPress={() => {
+                setSelectedProject(null);
+                setShowProjectPicker(false);
+              }}
+            >
+              <Feather name="globe" size={20} color={!selectedProject ? Colors.primary : theme.textSecondary} />
+              <View style={styles.projectOptionContent}>
+                <ThemedText style={!selectedProject ? { color: Colors.primary, fontWeight: "600" } : undefined}>
+                  All Projects
+                </ThemedText>
+                <ThemedText style={[styles.projectOptionSubtitle, { color: theme.textSecondary }]}>
+                  General analysis across all active projects
+                </ThemedText>
+              </View>
+              {!selectedProject ? <Feather name="check" size={20} color={Colors.primary} /> : null}
+            </Pressable>
+            {projects.map((project) => (
+              <Pressable
+                key={project.id}
+                style={[
+                  styles.projectOption,
+                  { backgroundColor: selectedProject?.id === project.id ? `${Colors.primary}15` : theme.backgroundDefault },
+                ]}
+                onPress={() => handleProjectSelect(project)}
+              >
+                <Feather
+                  name="folder"
+                  size={20}
+                  color={selectedProject?.id === project.id ? Colors.primary : theme.textSecondary}
+                />
+                <View style={styles.projectOptionContent}>
+                  <ThemedText
+                    style={selectedProject?.id === project.id ? { color: Colors.primary, fontWeight: "600" } : undefined}
+                  >
+                    {project.name}
+                  </ThemedText>
+                  <ThemedText style={[styles.projectOptionSubtitle, { color: theme.textSecondary }]}>
+                    {project.location?.address || "No location set"}
+                  </ThemedText>
+                </View>
+                {selectedProject?.id === project.id ? <Feather name="check" size={20} color={Colors.primary} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </ThemedView>
+      </Modal>
+
       {aiFeatures.map((feature) => {
         const hasAccess = canAccessFeature(feature.minRole);
         const isSelected = selectedFeature === feature.id;
@@ -130,7 +231,7 @@ export default function AIFeaturesScreen() {
             onPress={() => handleFeaturePress(feature)}
             disabled={!hasAccess}
           >
-            <Card style={[styles.featureCard, !hasAccess ? styles.featureCardDisabled : null]}>
+            <Card style={styles.featureCard}>
               <View style={styles.featureRow}>
                 <View style={[styles.featureIcon, { backgroundColor: `${feature.color}20` }]}>
                   <Feather name={feature.icon} size={24} color={hasAccess ? feature.color : theme.textSecondary} />
@@ -337,5 +438,64 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: Spacing.sm,
     marginBottom: Spacing.xs,
+  },
+  projectSelector: {
+    marginBottom: Spacing.xl,
+  },
+  projectSelectorLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+  },
+  projectSelectorButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  projectSelectorText: {
+    flex: 1,
+    fontSize: FontSizes.md,
+    fontWeight: "500",
+  },
+  projectHint: {
+    fontSize: FontSizes.xs,
+    marginTop: Spacing.sm,
+    fontStyle: "italic",
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  projectOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  projectOptionContent: {
+    flex: 1,
+  },
+  projectOptionSubtitle: {
+    fontSize: FontSizes.sm,
+    marginTop: 2,
   },
 });
