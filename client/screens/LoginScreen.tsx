@@ -137,6 +137,12 @@ export default function LoginScreen() {
                 Forgot Password?
               </ThemedText>
             </Pressable>
+
+            <View style={styles.demoHint}>
+              <ThemedText style={styles.demoHintText}>
+                Tip: Use "demo" as password to try the app
+              </ThemedText>
+            </View>
           </View>
         </View>
       </KeyboardAwareScrollViewCompat>
@@ -218,5 +224,16 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: Colors.primary,
     fontSize: 14,
+  },
+  demoHint: {
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.secondary + "10",
+    borderRadius: BorderRadius.xs,
+  },
+  demoHintText: {
+    color: Colors.secondary,
+    fontSize: 13,
   },
 });

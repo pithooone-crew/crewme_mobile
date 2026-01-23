@@ -39,17 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(mockUser);
           setIsDemoMode(true);
         } else {
+          // Try to get stored user first for quick display
           const storedUser = await getStoredUser();
           if (storedUser) {
             setUser(storedUser);
           }
-          const response = await api.auth.me();
-          if (response.data) {
-            setUser(response.data);
-            await storeUser(response.data);
-          } else if (response.error) {
-            await clearAuth();
-            setUser(null);
+          // Verify with server - but don't clear on failure during initial load
+          // User will need to log in again, which is handled by the login screen
+          try {
+            const response = await api.auth.me();
+            if (response.data) {
+              setUser(response.data);
+              await storeUser(response.data);
+            } else {
+              // Token invalid, clear it silently
+              await clearAuth();
+              setUser(null);
+            }
+          } catch {
+            // Network error - keep stored user if available, otherwise clear
+            if (!storedUser) {
+              await clearAuth();
+              setUser(null);
+            }
           }
         }
       }
@@ -88,12 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
     
-    return { success: false, error: response.error };
+    return { success: false, error: response.error || "Login failed. Please check your credentials." };
   }
 
   async function logout() {
     if (!isDemoMode) {
-      await api.auth.logout();
+      try {
+        await api.auth.logout();
+      } catch {
+        // Ignore logout errors
+      }
     }
     await clearAuth();
     setUser(null);
@@ -105,10 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mockUser);
       return;
     }
-    const response = await api.auth.me();
-    if (response.data) {
-      setUser(response.data);
-      await storeUser(response.data);
+    try {
+      const response = await api.auth.me();
+      if (response.data) {
+        setUser(response.data);
+        await storeUser(response.data);
+      }
+    } catch {
+      // Ignore refresh errors
     }
   }
 
