@@ -74,10 +74,16 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Design Patterns
 - **Path Aliases:** `@/` maps to `client/`, `@shared/` maps to `shared/`
-- **Theming:** Dark/light mode support via useColorScheme hook
+- **Theming:** Dark/light/system mode with ThemeContext and AsyncStorage persistence
+  - Dark theme colors: background #090c11, primary #0ea5e9 (electric blue), accent #f97316 (construction orange)
 - **Error Handling:** ErrorBoundary component with fallback UI
 - **Loading States:** Skeleton components for async data
 - **Haptic Feedback:** Used throughout for tactile interactions
+
+### Key Screens
+- **MoreScreen:** Consolidated feature menu with 8 logical groups (Command Center, Core Work, AI Planning, AI Team, Gamification, AI Finance, Operations, Quality & Docs)
+- **SettingsScreen:** Tabbed interface with Appearance, Notifications, Usage, and Data tabs
+- **AIFeaturesScreen:** AI tools with project selector for context-specific analysis
 
 ## External Dependencies
 
