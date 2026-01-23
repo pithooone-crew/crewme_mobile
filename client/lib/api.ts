@@ -236,9 +236,14 @@ export const api = {
       request<CrewMessage>(`/api/crew-messages/${id}/read`, {
         method: "POST",
       }),
-    sendReadReceipt: (id: string) =>
+    sendReadReceipt: (id: string, messageDetails?: { subject?: string; content?: string; priority?: string }) =>
       request<{ success: boolean; readAt: string; aiAcknowledgment?: string }>(`/api/crew-messages/${id}/read-receipt`, {
         method: "POST",
+        body: JSON.stringify({
+          messageSubject: messageDetails?.subject,
+          messageContent: messageDetails?.content,
+          priority: messageDetails?.priority,
+        }),
       }),
     getReadStatus: (id: string) =>
       request<ReadStatus>(`/api/crew-messages/${id}/read-status`),

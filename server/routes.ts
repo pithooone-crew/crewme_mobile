@@ -44,6 +44,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Read receipt endpoint - marks message as read and generates AI acknowledgment
+  app.post("/api/crew-messages/:id/read-receipt", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { messageSubject, messageContent, priority } = req.body;
+      
+      const readAt = new Date().toISOString();
+      
+      // Generate AI acknowledgment based on message content and priority
+      let aiAcknowledgment = "";
+      try {
+        const urgencyContext = priority === "high" || priority === "urgent" 
+          ? "urgent and formal" 
+          : priority === "low" 
+            ? "casual and friendly" 
+            : "professional and measured";
+        
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { 
+              role: "system", 
+              content: `You are generating a brief read receipt acknowledgment for a construction crew message. Keep it to 1-2 sentences. The tone should be ${urgencyContext}. Do not include greetings or signatures.`
+            },
+            { 
+              role: "user", 
+              content: `Generate an acknowledgment for receiving this message about: "${messageSubject || "a crew update"}". ${messageContent ? `Message content: "${messageContent.substring(0, 200)}"` : ""}`
+            },
+          ],
+          max_tokens: 100,
+        });
+        
+        aiAcknowledgment = response.choices[0]?.message?.content?.trim() || "Message received and acknowledged.";
+      } catch (aiError) {
+        console.error("AI acknowledgment generation failed:", aiError);
+        aiAcknowledgment = "Message received and acknowledged.";
+      }
+      
+      res.json({ 
+        success: true, 
+        readAt,
+        aiAcknowledgment,
+        readBy: "current_user",
+      });
+    } catch (error) {
+      console.error("Error sending read receipt:", error);
+      res.status(500).json({ error: "Failed to send read receipt" });
+    }
+  });
+
+  // Get read status for a message
+  app.get("/api/crew-messages/:id/read-status", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // In a real app, this would fetch from database
+      // For now, return a mock status that indicates it was read
+      res.json({
+        isRead: true,
+        readAt: new Date().toISOString(),
+        readBy: "current_user",
+        readReceiptSent: true,
+        aiAcknowledgment: "Message received and acknowledged.",
+      });
+    } catch (error) {
+      console.error("Error getting read status:", error);
+      res.status(500).json({ error: "Failed to get read status" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

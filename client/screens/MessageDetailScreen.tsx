@@ -201,7 +201,11 @@ export default function MessageDetailScreen() {
       if (message && message.status === "unread" && !isDemoMode && !sendingReceipt) {
         setSendingReceipt(true);
         try {
-          const response = await api.messages.sendReadReceipt(messageId);
+          const response = await api.messages.sendReadReceipt(messageId, {
+            subject: message.subject,
+            content: message.content,
+            priority: message.priority,
+          });
           if (response.data) {
             setReadStatus({
               isRead: true,
