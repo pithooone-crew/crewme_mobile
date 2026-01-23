@@ -17,11 +17,12 @@ interface ClockButtonProps {
   isClockedIn: boolean;
   onClockIn: (location: { latitude: number; longitude: number }) => Promise<void>;
   onClockOut: (location: { latitude: number; longitude: number }) => Promise<void>;
+  onRequestClockIn?: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonProps) {
+export function ClockButton({ isClockedIn, onClockIn, onClockOut, onRequestClockIn }: ClockButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -32,8 +33,8 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
     if (isClockedIn) {
       pulse.value = withRepeat(
         withSequence(
-          withSpring(1.05, { damping: 10 }),
-          withSpring(1, { damping: 10 })
+          withSpring(1.02, { damping: 15, stiffness: 100 }),
+          withSpring(1, { damping: 15, stiffness: 100 })
         ),
         -1,
         true
@@ -65,80 +66,89 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
     }
   };
 
-  const handlePress = async () => {
-    setError(null);
-    setPermissionDenied(false);
-    setIsLoading(true);
+  const getLocation = async (): Promise<{ latitude: number; longitude: number }> => {
+    let coords = { latitude: 0, longitude: 0 };
 
-    try {
-      let coords = { latitude: 0, longitude: 0 };
+    if (Platform.OS !== "web") {
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+      
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        finalStatus = status;
+      }
 
-      if (Platform.OS !== "web") {
-        // Check current permission status
-        const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-        
-        let finalStatus = existingStatus;
-        if (existingStatus !== "granted") {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          finalStatus = status;
+      if (finalStatus !== "granted") {
+        setPermissionDenied(true);
+        setError("Location access required for clock in/out");
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
+        throw new Error("Location permission denied");
+      }
 
-        if (finalStatus !== "granted") {
-          setPermissionDenied(true);
-          setError("Location access required for clock in/out");
-          if (Platform.OS !== "web") {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        // Get location with timeout
+      try {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        coords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+      } catch {
         try {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          coords = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          };
-        } catch (locError) {
-          // If getting precise location fails, try last known
-          try {
-            const lastLocation = await Location.getLastKnownPositionAsync();
-            if (lastLocation) {
-              coords = {
-                latitude: lastLocation.coords.latitude,
-                longitude: lastLocation.coords.longitude,
-              };
-            }
-          } catch {
-            // Use default coords if all else fails
+          const lastLocation = await Location.getLastKnownPositionAsync();
+          if (lastLocation) {
+            coords = {
+              latitude: lastLocation.coords.latitude,
+              longitude: lastLocation.coords.longitude,
+            };
           }
+        } catch {
+          // Use default coords if all else fails
         }
-      } else {
-        // Web fallback
+      }
+    } else {
+      if (navigator.geolocation) {
         try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            if (navigator.geolocation) {
+          const position = await Promise.race([
+            new Promise<GeolocationPosition>((resolve, reject) => {
               navigator.geolocation.getCurrentPosition(resolve, reject, {
-                timeout: 10000,
+                timeout: 2000,
                 enableHighAccuracy: false,
+                maximumAge: 300000,
               });
-            } else {
-              reject(new Error("Geolocation not supported"));
-            }
-          });
+            }),
+            new Promise<GeolocationPosition>((_, reject) => 
+              setTimeout(() => reject(new Error("Timeout")), 2000)
+            )
+          ]);
           coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           };
         } catch {
-          // Use default coords on web
+          // Use default coords on web - immediate fallback
         }
       }
+    }
+    return coords;
+  };
 
-      // Perform clock action
+  const handlePress = async () => {
+    setError(null);
+    setPermissionDenied(false);
+
+    if (!isClockedIn && onRequestClockIn) {
+      onRequestClockIn();
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const coords = await getLocation();
+
       if (isClockedIn) {
         await onClockOut(coords);
       } else {
@@ -150,7 +160,9 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
       }
     } catch (err) {
       console.error("Clock action error:", err);
-      setError("Failed to clock. Please try again.");
+      if (!permissionDenied) {
+        setError("Failed to clock. Please try again.");
+      }
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }

@@ -114,16 +114,12 @@ export default function DashboardScreen() {
     },
   });
 
-  const handleClockIn = async (location: { latitude: number; longitude: number }) => {
-    setPendingLocation(location);
+  const handleRequestClockIn = () => {
     setShowProjectModal(true);
   };
 
-  const handleProjectSelect = async (project: ProjectOption) => {
-    setShowProjectModal(false);
-    setSelectedProject(project);
+  const handleClockIn = async (location: { latitude: number; longitude: number }) => {
     const now = new Date();
-    const location = pendingLocation || { latitude: 0, longitude: 0 };
 
     if (isDemoMode) {
       setIsClockedIn(true);
@@ -143,6 +139,17 @@ export default function DashboardScreen() {
       }
     } catch (err) {
       console.error("Clock in failed:", err);
+      setIsClockedIn(true);
+      setClockInTime(now);
+    }
+  };
+
+  const handleProjectSelect = async (project: ProjectOption) => {
+    setShowProjectModal(false);
+    setSelectedProject(project);
+    
+    if (isDemoMode) {
+      const now = new Date();
       setIsClockedIn(true);
       setClockInTime(now);
     }
@@ -286,6 +293,7 @@ export default function DashboardScreen() {
           isClockedIn={isClockedIn}
           onClockIn={handleClockIn}
           onClockOut={handleClockOut}
+          onRequestClockIn={handleRequestClockIn}
         />
       </Card>
 
