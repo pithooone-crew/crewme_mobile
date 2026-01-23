@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -18,6 +19,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, CreateMessageData } from "@/lib/api";
+import { getApiUrl } from "@/lib/query-client";
 
 const categories: { label: string; value: CreateMessageData["category"]; icon: "message-circle" | "shield" | "calendar" | "tool" | "alert-triangle" }[] = [
   { label: "General", value: "general", icon: "message-circle" },
@@ -55,6 +57,7 @@ export default function ComposeMessageScreen() {
   const [category, setCategory] = useState<CreateMessageData["category"]>("general");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const filteredTasks = mockTasks.filter(
     (task) => !selectedProject || task.projectId === selectedProject
@@ -86,6 +89,54 @@ export default function ComposeMessageScreen() {
       }
     },
   });
+
+  const handleGenerateWithAI = async () => {
+    if (!subject.trim()) {
+      if (Platform.OS === "web") {
+        alert("Please enter a subject first to generate a message");
+      } else {
+        Alert.alert("Subject Required", "Please enter a subject first to help AI generate a relevant message");
+      }
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const projectName = selectedProject 
+        ? mockProjects.find(p => p.id === selectedProject)?.name 
+        : undefined;
+      const taskName = selectedTask 
+        ? mockTasks.find(t => t.id === selectedTask)?.name 
+        : undefined;
+
+      const response = await fetch(new URL("/api/generate-message", getApiUrl()).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          category,
+          projectName,
+          taskName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate message");
+      }
+
+      const data = await response.json();
+      setContent(data.message);
+    } catch (error) {
+      const message = "Could not generate message. Please try again.";
+      if (Platform.OS === "web") {
+        alert(message);
+      } else {
+        Alert.alert("Generation Failed", message);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!subject.trim()) {
@@ -309,9 +360,29 @@ export default function ComposeMessageScreen() {
         </Card>
 
         <Card style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Message
-          </ThemedText>
+          <View style={styles.messageTitleRow}>
+            <ThemedText type="h4">
+              Message
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.aiButton,
+                isGenerating && styles.aiButtonDisabled,
+              ]}
+              onPress={handleGenerateWithAI}
+              disabled={isGenerating}
+              testID="button-ai-generate"
+            >
+              {isGenerating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Feather name="zap" size={16} color="#FFFFFF" />
+              )}
+              <ThemedText type="small" style={styles.aiButtonText}>
+                {isGenerating ? "Generating..." : "AI Generate"}
+              </ThemedText>
+            </Pressable>
+          </View>
           <TextInput
             style={[
               styles.input,
@@ -321,7 +392,7 @@ export default function ComposeMessageScreen() {
                 color: theme.text,
               },
             ]}
-            placeholder="Type your message here..."
+            placeholder="Type your message here or use AI Generate..."
             placeholderTextColor={theme.textSecondary}
             value={content}
             onChangeText={setContent}
@@ -368,6 +439,28 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: Spacing.md,
+  },
+  messageTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  aiButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  aiButtonDisabled: {
+    opacity: 0.7,
+  },
+  aiButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   categoryGrid: {
     flexDirection: "row",

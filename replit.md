@@ -13,6 +13,7 @@ CrewMe is a React Native/Expo mobile application designed for construction workf
 - Push notifications
 - Rewards store for redeeming points
 - Messaging system with AI summaries, status tracking, and team communication
+- AI-powered message generation for easy message composition
 
 ## User Preferences
 
@@ -82,6 +83,9 @@ Preferred communication style: Simple, everyday language.
 - **External API:** Connects to `https://site-scheduler--pithooone.replit.app` for backend data
 - **Push Notifications:** Expo Notifications with Expo Push Token
 - **Location Services:** expo-location for GPS clock in/out verification
+- **AI Integration:** OpenAI via Replit AI Integrations for message generation (gpt-4o-mini model)
+  - Endpoint: POST /api/generate-message
+  - Environment variables: AI_INTEGRATIONS_OPENAI_BASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY (managed by Replit)
 
 ### Key Libraries
 - **expo-location** - GPS tracking for time clock verification
