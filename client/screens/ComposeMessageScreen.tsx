@@ -8,11 +8,13 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
@@ -58,6 +60,9 @@ export default function ComposeMessageScreen() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [cameraPermission, requestCameraPermission] = ImagePicker.useCameraPermissions();
+  const [mediaPermission, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions();
 
   const filteredTasks = mockTasks.filter(
     (task) => !selectedProject || task.projectId === selectedProject
@@ -136,6 +141,79 @@ export default function ComposeMessageScreen() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const pickImageFromGallery = async () => {
+    if (Platform.OS === "web") {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 5 - attachedImages.length,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map((asset) => asset.uri);
+        setAttachedImages((prev) => [...prev, ...newImages].slice(0, 5));
+      }
+      return;
+    }
+
+    if (!mediaPermission?.granted) {
+      if (mediaPermission?.status === "denied" && !mediaPermission?.canAskAgain) {
+        Alert.alert(
+          "Permission Required",
+          "Please enable photo library access in your device settings to attach images."
+        );
+        return;
+      }
+      const permission = await requestMediaPermission();
+      if (!permission.granted) return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 5 - attachedImages.length,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map((asset) => asset.uri);
+      setAttachedImages((prev) => [...prev, ...newImages].slice(0, 5));
+    }
+  };
+
+  const takePhoto = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Camera", "Camera is not available on web. Please use the gallery option.");
+      return;
+    }
+
+    if (!cameraPermission?.granted) {
+      if (cameraPermission?.status === "denied" && !cameraPermission?.canAskAgain) {
+        Alert.alert(
+          "Permission Required",
+          "Please enable camera access in your device settings to take photos."
+        );
+        return;
+      }
+      const permission = await requestCameraPermission();
+      if (!permission.granted) return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      allowsEditing: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      setAttachedImages((prev) => [...prev, result.assets[0].uri].slice(0, 5));
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
@@ -403,6 +481,81 @@ export default function ComposeMessageScreen() {
           />
         </Card>
 
+        <Card style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>
+            Attachments
+          </ThemedText>
+          <View style={styles.attachmentButtons}>
+            <Pressable
+              style={[
+                styles.attachButton,
+                { backgroundColor: theme.backgroundSecondary },
+                attachedImages.length >= 5 && styles.attachButtonDisabled,
+              ]}
+              onPress={takePhoto}
+              disabled={attachedImages.length >= 5}
+              testID="button-camera"
+            >
+              <Feather name="camera" size={20} color={attachedImages.length >= 5 ? theme.textSecondary : Colors.primary} />
+              <ThemedText
+                type="small"
+                style={[
+                  styles.attachButtonText,
+                  { color: attachedImages.length >= 5 ? theme.textSecondary : theme.text },
+                ]}
+              >
+                Camera
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.attachButton,
+                { backgroundColor: theme.backgroundSecondary },
+                attachedImages.length >= 5 && styles.attachButtonDisabled,
+              ]}
+              onPress={pickImageFromGallery}
+              disabled={attachedImages.length >= 5}
+              testID="button-gallery"
+            >
+              <Feather name="image" size={20} color={attachedImages.length >= 5 ? theme.textSecondary : Colors.primary} />
+              <ThemedText
+                type="small"
+                style={[
+                  styles.attachButtonText,
+                  { color: attachedImages.length >= 5 ? theme.textSecondary : theme.text },
+                ]}
+              >
+                Gallery
+              </ThemedText>
+            </Pressable>
+          </View>
+          {attachedImages.length > 0 ? (
+            <View style={styles.imagePreviewContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.imageScroll}
+              >
+                {attachedImages.map((uri, index) => (
+                  <View key={`${uri}-${index}`} style={styles.imagePreviewWrapper}>
+                    <Image source={{ uri }} style={styles.imagePreview} />
+                    <Pressable
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(index)}
+                      testID={`button-remove-image-${index}`}
+                    >
+                      <Feather name="x" size={14} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                {attachedImages.length}/5 images attached
+              </ThemedText>
+            </View>
+          ) : null}
+        </Card>
+
         <Pressable
           style={[
             styles.sendButton,
@@ -513,5 +666,51 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  attachmentButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  attachButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.sm,
+  },
+  attachButtonDisabled: {
+    opacity: 0.5,
+  },
+  attachButtonText: {
+    fontWeight: "500",
+  },
+  imagePreviewContainer: {
+    marginTop: Spacing.md,
+  },
+  imageScroll: {
+    marginHorizontal: -Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+  },
+  imagePreviewWrapper: {
+    position: "relative",
+    marginRight: Spacing.sm,
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.sm,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.error,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
