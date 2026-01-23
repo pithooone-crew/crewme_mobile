@@ -4,8 +4,8 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
-import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
-import { Card, CardContent } from "@/components/Card";
+import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
+import { Card } from "@/components/Card";
 
 export default function SettingsScreen() {
   const headerHeight = useHeaderHeight();
@@ -63,117 +63,109 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.section}>
-          <CardContent>
-            <Text style={styles.sectionTitle}>Appearance</Text>
-            <SettingRow
-              icon="moon"
-              title="Dark Mode"
-              subtitle="Use dark theme"
-              value={darkMode}
-              onToggle={setDarkMode}
-            />
-          </CardContent>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <SettingRow
+            icon="moon"
+            title="Dark Mode"
+            subtitle="Use dark theme"
+            value={darkMode}
+            onToggle={setDarkMode}
+          />
         </Card>
 
         <Card style={styles.section}>
-          <CardContent>
-            <Text style={styles.sectionTitle}>Notifications</Text>
-            <SettingRow
-              icon="bell"
-              title="Push Notifications"
-              subtitle="Enable all notifications"
-              value={pushNotifications}
-              onToggle={setPushNotifications}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="clipboard"
-              title="Task Reminders"
-              subtitle="Get reminders for upcoming tasks"
-              value={taskReminders}
-              onToggle={setTaskReminders}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="calendar"
-              title="Schedule Alerts"
-              subtitle="Notify about schedule changes"
-              value={scheduleAlerts}
-              onToggle={setScheduleAlerts}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="award"
-              title="Achievement Alerts"
-              subtitle="Celebrate your accomplishments"
-              value={achievementAlerts}
-              onToggle={setAchievementAlerts}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="cloud"
-              title="Weather Alerts"
-              subtitle="Get weather-related notifications"
-              value={weatherAlerts}
-              onToggle={setWeatherAlerts}
-            />
-          </CardContent>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <SettingRow
+            icon="bell"
+            title="Push Notifications"
+            subtitle="Enable all notifications"
+            value={pushNotifications}
+            onToggle={setPushNotifications}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="clipboard"
+            title="Task Reminders"
+            subtitle="Get reminders for upcoming tasks"
+            value={taskReminders}
+            onToggle={setTaskReminders}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="calendar"
+            title="Schedule Alerts"
+            subtitle="Notify about schedule changes"
+            value={scheduleAlerts}
+            onToggle={setScheduleAlerts}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="award"
+            title="Achievement Alerts"
+            subtitle="Celebrate your accomplishments"
+            value={achievementAlerts}
+            onToggle={setAchievementAlerts}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="cloud"
+            title="Weather Alerts"
+            subtitle="Get weather-related notifications"
+            value={weatherAlerts}
+            onToggle={setWeatherAlerts}
+          />
         </Card>
 
         <Card style={styles.section}>
-          <CardContent>
-            <Text style={styles.sectionTitle}>Account</Text>
-            <SettingRow
-              icon="user"
-              title="Edit Profile"
-              subtitle="Update your personal information"
-              showArrow
-              onPress={() => {}}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="shield"
-              title="Privacy & Security"
-              subtitle="Manage your privacy settings"
-              showArrow
-              onPress={() => {}}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="file-text"
-              title="Certifications"
-              subtitle="Manage your certifications"
-              showArrow
-              onPress={() => {}}
-            />
-          </CardContent>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <SettingRow
+            icon="user"
+            title="Edit Profile"
+            subtitle="Update your personal information"
+            showArrow
+            onPress={() => {}}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="shield"
+            title="Privacy & Security"
+            subtitle="Manage your privacy settings"
+            showArrow
+            onPress={() => {}}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="file-text"
+            title="Certifications"
+            subtitle="Manage your certifications"
+            showArrow
+            onPress={() => {}}
+          />
         </Card>
 
         <Card style={styles.section}>
-          <CardContent>
-            <Text style={styles.sectionTitle}>Support</Text>
-            <SettingRow
-              icon="help-circle"
-              title="Help Center"
-              showArrow
-              onPress={() => {}}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="message-circle"
-              title="Contact Support"
-              showArrow
-              onPress={() => {}}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="info"
-              title="About CrewMe"
-              subtitle="Version 1.0.0"
-              showArrow
-              onPress={() => {}}
-            />
-          </CardContent>
+          <Text style={styles.sectionTitle}>Support</Text>
+          <SettingRow
+            icon="help-circle"
+            title="Help Center"
+            showArrow
+            onPress={() => {}}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="message-circle"
+            title="Contact Support"
+            showArrow
+            onPress={() => {}}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="info"
+            title="About CrewMe"
+            subtitle="Version 1.0.0"
+            showArrow
+            onPress={() => {}}
+          />
         </Card>
 
         <Pressable style={styles.logoutButton} onPress={logout}>
@@ -199,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     textTransform: "uppercase",
@@ -224,12 +216,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingTitle: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.md,
     color: Colors.text,
   },
   settingSubtitle: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginTop: 2,
@@ -251,12 +242,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
   logoutText: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.md,
     color: "#C62828",
   },
   footerText: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     textAlign: "center",

@@ -6,8 +6,8 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, TimeEntry } from "@/lib/api";
 import { mockTimeEntries } from "@/lib/mockData";
-import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
-import { Card, CardContent } from "@/components/Card";
+import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
+import { Card } from "@/components/Card";
 
 type ViewMode = "daily" | "weekly";
 
@@ -69,25 +69,23 @@ export default function TimesheetScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.summaryCard}>
-          <CardContent>
-            <Text style={styles.summaryTitle}>This Week</Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalHours.toFixed(1)}</Text>
-                <Text style={styles.summaryLabel}>Total Hours</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{approvedHours.toFixed(1)}</Text>
-                <Text style={styles.summaryLabel}>Approved</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{entries.length}</Text>
-                <Text style={styles.summaryLabel}>Entries</Text>
-              </View>
+          <Text style={styles.summaryTitle}>This Week</Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{totalHours.toFixed(1)}</Text>
+              <Text style={styles.summaryLabel}>Total Hours</Text>
             </View>
-          </CardContent>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{approvedHours.toFixed(1)}</Text>
+              <Text style={styles.summaryLabel}>Approved</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{entries.length}</Text>
+              <Text style={styles.summaryLabel}>Entries</Text>
+            </View>
+          </View>
         </Card>
 
         <View style={styles.viewToggle}>
@@ -110,40 +108,38 @@ export default function TimesheetScreen() {
             <Text style={styles.dateHeader}>{formatDate(dayEntries[0].clockIn)}</Text>
             {dayEntries.map((entry) => (
               <Card key={entry.id} style={styles.entryCard}>
-                <CardContent>
-                  <View style={styles.entryHeader}>
-                    <View style={styles.entryInfo}>
-                      <Text style={styles.projectName}>{entry.projectName || "General"}</Text>
-                      {entry.taskName ? (
-                        <Text style={styles.taskName} numberOfLines={1}>{entry.taskName}</Text>
-                      ) : null}
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusColors[entry.status]?.bg || "#f0f0f0" }]}>
-                      <Text style={[styles.statusText, { color: statusColors[entry.status]?.text || "#666" }]}>
-                        {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.timeRow}>
-                    <View style={styles.timeItem}>
-                      <Feather name="log-in" size={14} color={Colors.primary} />
-                      <Text style={styles.timeLabel}>In:</Text>
-                      <Text style={styles.timeValue}>{formatTime(entry.clockIn)}</Text>
-                    </View>
-                    {entry.clockOut ? (
-                      <View style={styles.timeItem}>
-                        <Feather name="log-out" size={14} color={Colors.accent} />
-                        <Text style={styles.timeLabel}>Out:</Text>
-                        <Text style={styles.timeValue}>{formatTime(entry.clockOut)}</Text>
-                      </View>
+                <View style={styles.entryHeader}>
+                  <View style={styles.entryInfo}>
+                    <Text style={styles.projectName}>{entry.projectName || "General"}</Text>
+                    {entry.taskName ? (
+                      <Text style={styles.taskName} numberOfLines={1}>{entry.taskName}</Text>
                     ) : null}
-                    <View style={styles.hoursItem}>
-                      <Feather name="clock" size={14} color={Colors.secondary} />
-                      <Text style={styles.hoursValue}>{entry.hoursWorked?.toFixed(1) || "--"} hrs</Text>
-                    </View>
                   </View>
-                </CardContent>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColors[entry.status]?.bg || "#f0f0f0" }]}>
+                    <Text style={[styles.statusText, { color: statusColors[entry.status]?.text || "#666" }]}>
+                      {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.timeRow}>
+                  <View style={styles.timeItem}>
+                    <Feather name="log-in" size={14} color={Colors.primary} />
+                    <Text style={styles.timeLabel}>In:</Text>
+                    <Text style={styles.timeValue}>{formatTime(entry.clockIn)}</Text>
+                  </View>
+                  {entry.clockOut ? (
+                    <View style={styles.timeItem}>
+                      <Feather name="log-out" size={14} color={Colors.accent} />
+                      <Text style={styles.timeLabel}>Out:</Text>
+                      <Text style={styles.timeValue}>{formatTime(entry.clockOut)}</Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.hoursItem}>
+                    <Feather name="clock" size={14} color={Colors.secondary} />
+                    <Text style={styles.hoursValue}>{entry.hoursWorked?.toFixed(1) || "--"} hrs</Text>
+                  </View>
+                </View>
               </Card>
             ))}
           </View>
@@ -174,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   summaryTitle: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.sm,
     color: "rgba(255,255,255,0.8)",
     marginBottom: Spacing.md,
@@ -188,12 +184,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   summaryValue: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.xxl,
     color: "#fff",
   },
   summaryLabel: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.xs,
     color: "rgba(255,255,255,0.8)",
     marginTop: 4,
@@ -220,7 +215,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   toggleText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
   },
@@ -228,7 +222,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   dateHeader: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.md,
     color: Colors.text,
     marginTop: Spacing.md,
@@ -247,12 +241,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   projectName: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.md,
     color: Colors.text,
   },
   taskName: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginTop: 2,
@@ -263,7 +256,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   statusText: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.xs,
   },
   timeRow: {
@@ -277,12 +270,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeLabel: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
   },
   timeValue: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.sm,
     color: Colors.text,
   },
@@ -293,22 +285,21 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
   hoursValue: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.sm,
     color: Colors.secondary,
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: Spacing.xxl,
+    paddingVertical: Spacing["2xl"],
   },
   emptyTitle: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.lg,
     color: Colors.text,
     marginTop: Spacing.md,
   },
   emptyText: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.md,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,

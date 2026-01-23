@@ -6,8 +6,8 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, CrewMember } from "@/lib/api";
 import { mockCrewMembers } from "@/lib/mockData";
-import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
-import { Card, CardContent } from "@/components/Card";
+import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
+import { Card } from "@/components/Card";
 
 const roleLabels: Record<string, string> = {
   crew_member: "Crew Member",
@@ -87,68 +87,66 @@ export default function CrewScreen() {
 
         {filteredCrew.map((member) => (
           <Card key={member.id} style={styles.memberCard}>
-            <CardContent>
-              <View style={styles.memberHeader}>
-                <View style={[styles.avatar, { backgroundColor: roleColors[member.role] || Colors.secondary }]}>
-                  <Text style={styles.avatarText}>{getInitials(member.firstName, member.lastName)}</Text>
-                </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
-                  <Text style={[styles.roleText, { color: roleColors[member.role] || Colors.secondary }]}>
-                    {roleLabels[member.role] || member.role}
-                  </Text>
-                </View>
-                <View style={styles.levelBadge}>
-                  <Text style={styles.levelText}>Lv {member.level}</Text>
-                </View>
+            <View style={styles.memberHeader}>
+              <View style={[styles.avatar, { backgroundColor: roleColors[member.role] || Colors.secondary }]}>
+                <Text style={styles.avatarText}>{getInitials(member.firstName, member.lastName)}</Text>
               </View>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
+                <Text style={[styles.roleText, { color: roleColors[member.role] || Colors.secondary }]}>
+                  {roleLabels[member.role] || member.role}
+                </Text>
+              </View>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelText}>Lv {member.level}</Text>
+              </View>
+            </View>
 
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Feather name="star" size={14} color={Colors.accent} />
-                  <Text style={styles.statValue}>{member.rating.toFixed(1)}</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Feather name="check-circle" size={14} color={Colors.primary} />
-                  <Text style={styles.statValue}>{member.tasksCompleted}</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Feather name="zap" size={14} color={Colors.secondary} />
-                  <Text style={styles.statValue}>{member.xp.toLocaleString()} XP</Text>
-                </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Feather name="star" size={14} color={Colors.accent} />
+                <Text style={styles.statValue}>{member.rating.toFixed(1)}</Text>
               </View>
+              <View style={styles.statItem}>
+                <Feather name="check-circle" size={14} color={Colors.primary} />
+                <Text style={styles.statValue}>{member.tasksCompleted}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Feather name="zap" size={14} color={Colors.secondary} />
+                <Text style={styles.statValue}>{member.xp.toLocaleString()} XP</Text>
+              </View>
+            </View>
 
-              <View style={styles.skillsContainer}>
-                <Text style={styles.skillsLabel}>Skills</Text>
-                <View style={styles.skillsRow}>
-                  {member.skills.slice(0, 4).map((skill, index) => (
-                    <View key={index} style={styles.skillChip}>
-                      <Text style={styles.skillText}>{skill}</Text>
-                    </View>
-                  ))}
-                  {member.skills.length > 4 ? (
-                    <View style={styles.skillChip}>
-                      <Text style={styles.skillText}>+{member.skills.length - 4}</Text>
-                    </View>
-                  ) : null}
-                </View>
+            <View style={styles.skillsContainer}>
+              <Text style={styles.skillsLabel}>Skills</Text>
+              <View style={styles.skillsRow}>
+                {member.skills.slice(0, 4).map((skill, index) => (
+                  <View key={index} style={styles.skillChip}>
+                    <Text style={styles.skillText}>{skill}</Text>
+                  </View>
+                ))}
+                {member.skills.length > 4 ? (
+                  <View style={styles.skillChip}>
+                    <Text style={styles.skillText}>+{member.skills.length - 4}</Text>
+                  </View>
+                ) : null}
               </View>
+            </View>
 
-              <View style={styles.contactRow}>
-                <Pressable style={styles.contactButton}>
-                  <Feather name="phone" size={16} color={Colors.primary} />
-                  <Text style={styles.contactText}>Call</Text>
-                </Pressable>
-                <Pressable style={styles.contactButton}>
-                  <Feather name="mail" size={16} color={Colors.primary} />
-                  <Text style={styles.contactText}>Email</Text>
-                </Pressable>
-                <Pressable style={styles.contactButton}>
-                  <Feather name="message-circle" size={16} color={Colors.primary} />
-                  <Text style={styles.contactText}>Message</Text>
-                </Pressable>
-              </View>
-            </CardContent>
+            <View style={styles.contactRow}>
+              <Pressable style={styles.contactButton}>
+                <Feather name="phone" size={16} color={Colors.primary} />
+                <Text style={styles.contactText}>Call</Text>
+              </Pressable>
+              <Pressable style={styles.contactButton}>
+                <Feather name="mail" size={16} color={Colors.primary} />
+                <Text style={styles.contactText}>Email</Text>
+              </Pressable>
+              <Pressable style={styles.contactButton}>
+                <Feather name="message-circle" size={16} color={Colors.primary} />
+                <Text style={styles.contactText}>Message</Text>
+              </Pressable>
+            </View>
           </Card>
         ))}
       </ScrollView>
@@ -179,13 +177,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.md,
     color: Colors.text,
     paddingVertical: Spacing.md,
   },
   countText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginBottom: Spacing.md,
@@ -206,7 +202,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.lg,
     color: "#fff",
   },
@@ -215,12 +211,12 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   memberName: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.lg,
     color: Colors.text,
   },
   roleText: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.sm,
     marginTop: 2,
   },
@@ -231,7 +227,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   levelText: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.xs,
     color: "#fff",
   },
@@ -250,7 +246,7 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   statValue: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.sm,
     color: Colors.text,
   },
@@ -258,7 +254,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   skillsLabel: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
@@ -275,7 +270,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   skillText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.xs,
     color: Colors.text,
   },
@@ -294,7 +288,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   contactText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.primary,
   },

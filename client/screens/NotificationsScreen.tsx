@@ -6,8 +6,8 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, InAppNotification } from "@/lib/api";
 import { mockNotifications } from "@/lib/mockData";
-import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
-import { Card, CardContent } from "@/components/Card";
+import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
+import { Card } from "@/components/Card";
 
 const typeIcons: Record<string, { name: keyof typeof Feather.glyphMap; color: string }> = {
   task: { name: "clipboard", color: Colors.primary },
@@ -106,23 +106,21 @@ export default function NotificationsScreen() {
               }}
             >
               <Card style={[styles.notificationCard, !notification.isRead && styles.unreadCard]}>
-                <CardContent>
-                  <View style={styles.notificationRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
-                      <Feather name={icon.name} size={20} color={icon.color} />
-                    </View>
-                    <View style={styles.notificationContent}>
-                      <View style={styles.titleRow}>
-                        <Text style={styles.notificationTitle}>{notification.title}</Text>
-                        <Text style={styles.timeText}>{formatTimeAgo(notification.createdAt)}</Text>
-                      </View>
-                      <Text style={styles.notificationMessage} numberOfLines={2}>
-                        {notification.message}
-                      </Text>
-                    </View>
-                    {!notification.isRead ? <View style={styles.unreadDot} /> : null}
+                <View style={styles.notificationRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
+                    <Feather name={icon.name} size={20} color={icon.color} />
                   </View>
-                </CardContent>
+                  <View style={styles.notificationContent}>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.notificationTitle}>{notification.title}</Text>
+                      <Text style={styles.timeText}>{formatTimeAgo(notification.createdAt)}</Text>
+                    </View>
+                    <Text style={styles.notificationMessage} numberOfLines={2}>
+                      {notification.message}
+                    </Text>
+                  </View>
+                  {!notification.isRead ? <View style={styles.unreadDot} /> : null}
+                </View>
               </Card>
             </Pressable>
           );
@@ -155,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   unreadCount: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.sm,
     color: Colors.text,
   },
@@ -164,7 +162,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   markAllText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.primary,
   },
@@ -197,19 +194,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   notificationTitle: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.md,
     color: Colors.text,
     flex: 1,
     marginRight: Spacing.sm,
   },
   timeText: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
   },
   notificationMessage: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     lineHeight: 20,
@@ -224,16 +219,15 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: Spacing.xxl,
+    paddingVertical: Spacing["2xl"],
   },
   emptyTitle: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.lg,
     color: Colors.text,
     marginTop: Spacing.md,
   },
   emptyText: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.md,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,

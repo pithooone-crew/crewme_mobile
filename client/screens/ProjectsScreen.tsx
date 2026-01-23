@@ -6,8 +6,8 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, Project } from "@/lib/api";
 import { mockProjects } from "@/lib/mockData";
-import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Fonts } from "@/constants/theme";
-import { Card, CardContent } from "@/components/Card";
+import { Colors, Spacing, BorderRadius, FontSizes, Fonts } from "@/constants/theme";
+import { Card } from "@/components/Card";
 
 type StatusFilter = "all" | "planning" | "active" | "completed" | "on_hold";
 
@@ -81,64 +81,62 @@ export default function ProjectsScreen() {
 
         {filteredProjects.map((project) => (
           <Card key={project.id} style={styles.projectCard}>
-            <CardContent>
-              <View style={styles.projectHeader}>
-                <View style={styles.projectTitleRow}>
-                  <Text style={styles.projectName}>{project.name}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: statusColors[project.status]?.bg || "#f0f0f0" }]}>
-                    <Text style={[styles.statusText, { color: statusColors[project.status]?.text || "#666" }]}>
-                      {project.status === "on_hold" ? "On Hold" : project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.projectDescription} numberOfLines={2}>{project.description}</Text>
-              </View>
-
-              <View style={styles.progressContainer}>
-                <View style={styles.progressLabelRow}>
-                  <Text style={styles.progressLabel}>Progress</Text>
-                  <Text style={styles.progressValue}>{project.progress}%</Text>
-                </View>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${project.progress}%` }]} />
+            <View style={styles.projectHeader}>
+              <View style={styles.projectTitleRow}>
+                <Text style={styles.projectName}>{project.name}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: statusColors[project.status]?.bg || "#f0f0f0" }]}>
+                  <Text style={[styles.statusText, { color: statusColors[project.status]?.text || "#666" }]}>
+                    {project.status === "on_hold" ? "On Hold" : project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                  </Text>
                 </View>
               </View>
+              <Text style={styles.projectDescription} numberOfLines={2}>{project.description}</Text>
+            </View>
 
-              <View style={styles.projectDetails}>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressLabelRow}>
+                <Text style={styles.progressLabel}>Progress</Text>
+                <Text style={styles.progressValue}>{project.progress}%</Text>
+              </View>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${project.progress}%` }]} />
+              </View>
+            </View>
+
+            <View style={styles.projectDetails}>
+              <View style={styles.detailRow}>
+                <Feather name="map-pin" size={14} color={Colors.textSecondary} />
+                <Text style={styles.detailText} numberOfLines={1}>{project.location.address}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Feather name="calendar" size={14} color={Colors.textSecondary} />
+                <Text style={styles.detailText}>{formatDate(project.startDate)} - {formatDate(project.endDate)}</Text>
+              </View>
+              {project.client ? (
                 <View style={styles.detailRow}>
-                  <Feather name="map-pin" size={14} color={Colors.textSecondary} />
-                  <Text style={styles.detailText} numberOfLines={1}>{project.location.address}</Text>
+                  <Feather name="briefcase" size={14} color={Colors.textSecondary} />
+                  <Text style={styles.detailText}>{project.client}</Text>
                 </View>
-                <View style={styles.detailRow}>
-                  <Feather name="calendar" size={14} color={Colors.textSecondary} />
-                  <Text style={styles.detailText}>{formatDate(project.startDate)} - {formatDate(project.endDate)}</Text>
-                </View>
-                {project.client ? (
-                  <View style={styles.detailRow}>
-                    <Feather name="briefcase" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.detailText}>{project.client}</Text>
-                  </View>
-                ) : null}
-              </View>
+              ) : null}
+            </View>
 
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Feather name="check-square" size={16} color={Colors.primary} />
-                  <Text style={styles.statValue}>{project.tasksCount}</Text>
-                  <Text style={styles.statLabel}>Tasks</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Feather name="users" size={16} color={Colors.secondary} />
-                  <Text style={styles.statValue}>{project.crewCount}</Text>
-                  <Text style={styles.statLabel}>Crew</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Feather name="dollar-sign" size={16} color={Colors.accent} />
-                  <Text style={styles.statValue}>{formatBudget(project.budget)}</Text>
-                  <Text style={styles.statLabel}>Budget</Text>
-                </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Feather name="check-square" size={16} color={Colors.primary} />
+                <Text style={styles.statValue}>{project.tasksCount}</Text>
+                <Text style={styles.statLabel}>Tasks</Text>
               </View>
-            </CardContent>
+              <View style={styles.statItem}>
+                <Feather name="users" size={16} color={Colors.secondary} />
+                <Text style={styles.statValue}>{project.crewCount}</Text>
+                <Text style={styles.statLabel}>Crew</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Feather name="dollar-sign" size={16} color={Colors.accent} />
+                <Text style={styles.statValue}>{formatBudget(project.budget)}</Text>
+                <Text style={styles.statLabel}>Budget</Text>
+              </View>
+            </View>
           </Card>
         ))}
       </ScrollView>
@@ -173,7 +171,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   filterText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
   },
@@ -181,7 +178,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   countText: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginBottom: Spacing.md,
@@ -199,7 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   projectName: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.lg,
     color: Colors.text,
     flex: 1,
@@ -211,12 +207,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   statusText: {
-    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
     fontSize: FontSizes.xs,
     textTransform: "uppercase",
   },
   projectDescription: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     lineHeight: 20,
@@ -230,12 +225,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   progressLabel: {
-    fontFamily: Fonts.medium,
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
   },
   progressValue: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.xs,
     color: Colors.primary,
   },
@@ -260,7 +254,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   detailText: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     flex: 1,
@@ -277,12 +270,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statValue: {
-    fontFamily: Fonts.bold,
+    fontWeight: "700",
     fontSize: FontSizes.md,
     color: Colors.text,
   },
   statLabel: {
-    fontFamily: Fonts.regular,
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
   },
