@@ -51,6 +51,8 @@ const featureGroups: FeatureGroup[] = [
       { id: "projects", name: "Projects", icon: "folder", screen: "Projects", color: Colors.secondary },
       { id: "crew", name: "Crew", icon: "users", screen: "Crew", color: Colors.accent, minRole: "lead" },
       { id: "time-tracking", name: "Time Tracking", icon: "clock", screen: "Timesheet", color: Colors.warning },
+      { id: "attendance", name: "Attendance", icon: "log-in", screen: "Attendance", color: Colors.success },
+      { id: "crew-id", name: "Crew ID Card", icon: "credit-card", screen: "CrewIDCard", color: Colors.primary },
     ],
   },
   {
@@ -62,7 +64,8 @@ const featureGroups: FeatureGroup[] = [
       { id: "smart-scheduling", name: "Smart Scheduling", icon: "calendar", screen: "AIFeatures", color: "#00BFA5", minRole: "project_manager" },
       { id: "what-if", name: "What-If Analysis", icon: "git-branch", screen: "AIFeatures", color: "#0288D1", minRole: "project_manager" },
       { id: "schedule-optimizer", name: "Schedule Optimizer", icon: "zap", screen: "AIFeatures", color: Colors.warning, minRole: "project_manager" },
-      { id: "self-healing", name: "Self-Healing", icon: "refresh-cw", screen: "AIFeatures", color: Colors.success, minRole: "project_manager" },
+      { id: "self-healing", name: "Self-Healing", icon: "refresh-cw", screen: "AINotifications", color: Colors.success },
+      { id: "availability-pool", name: "Availability Pool", icon: "user-check", screen: "AvailabilityPool", color: Colors.primary },
     ],
   },
   {

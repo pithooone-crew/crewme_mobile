@@ -13,6 +13,10 @@ import ComposeMessageScreen from "@/screens/ComposeMessageScreen";
 import MessageDetailScreen from "@/screens/MessageDetailScreen";
 import TemplatesScreen from "@/screens/TemplatesScreen";
 import MoreScreen from "@/screens/MoreScreen";
+import AttendanceScreen from "@/screens/AttendanceScreen";
+import CrewIDCardScreen from "@/screens/CrewIDCardScreen";
+import AINotificationsScreen from "@/screens/AINotificationsScreen";
+import AvailabilityPoolScreen from "@/screens/AvailabilityPoolScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -30,6 +34,10 @@ export type HomeStackParamList = {
   MessageDetail: { messageId: string };
   Templates: undefined;
   More: undefined;
+  Attendance: undefined;
+  CrewIDCard: undefined;
+  AINotifications: undefined;
+  AvailabilityPool: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -128,6 +136,34 @@ export default function HomeStackNavigator() {
         component={MoreScreen}
         options={{
           headerTitle: "All Features",
+        }}
+      />
+      <Stack.Screen
+        name="Attendance"
+        component={AttendanceScreen}
+        options={{
+          headerTitle: "Attendance & Timesheet",
+        }}
+      />
+      <Stack.Screen
+        name="CrewIDCard"
+        component={CrewIDCardScreen}
+        options={{
+          headerTitle: "Crew ID Card",
+        }}
+      />
+      <Stack.Screen
+        name="AINotifications"
+        component={AINotificationsScreen}
+        options={{
+          headerTitle: "AI Notifications",
+        }}
+      />
+      <Stack.Screen
+        name="AvailabilityPool"
+        component={AvailabilityPoolScreen}
+        options={{
+          headerTitle: "Availability Pool",
         }}
       />
     </Stack.Navigator>
