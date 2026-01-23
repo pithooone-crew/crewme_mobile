@@ -10,6 +10,7 @@ import Animated, {
   withRepeat,
   withSequence,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
@@ -59,33 +60,61 @@ export function ClockButton({ isClockedIn, onClockIn, onClockOut }: ClockButtonP
     setIsLoading(true);
 
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setError("Location permission required");
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setIsLoading(false);
-        return;
+      let coords = { latitude: 0, longitude: 0 };
+
+      // Try to get location, but fall back to default if on web or if it fails
+      if (Platform.OS !== "web") {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            coords = {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            };
+          }
+        } catch (locErr) {
+          console.log("Location error, using default coordinates");
+        }
+      } else {
+        // On web, try browser geolocation API
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                timeout: 5000,
+                enableHighAccuracy: false,
+              });
+            } else {
+              reject(new Error("Geolocation not supported"));
+            }
+          });
+          coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+        } catch (webLocErr) {
+          console.log("Web location error, using default coordinates");
+        }
       }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
 
       if (isClockedIn) {
         await onClockOut(coords);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await onClockIn(coords);
+      }
+      
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
-      setError("Failed to get location");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      console.error("Clock action error:", err);
+      setError("Clock action failed. Please try again.");
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     } finally {
       setIsLoading(false);
     }
