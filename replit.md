@@ -15,6 +15,7 @@ CrewMe is a React Native/Expo mobile application designed for construction workf
 - Messaging system with AI summaries, status tracking, and team communication
 - AI-powered message generation for easy message composition
 - Read receipts with AI-generated acknowledgments for manager confirmations
+- Project Templates with AI generation for quick project setup (40+ hour time savings)
 
 ## User Preferences
 
@@ -100,3 +101,27 @@ Preferred communication style: Simple, everyday language.
 - PostgreSQL configured via `DATABASE_URL` environment variable
 - Drizzle Kit for migrations (`drizzle.config.ts`)
 - Migration files stored in `migrations/` directory
+
+### Project Templates Feature
+The Templates feature allows users to browse pre-built project templates and generate custom ones using AI.
+
+**Components:**
+- `client/screens/TemplatesScreen.tsx` - Main templates screen with list, filtering, detail modal, and AI generation
+
+**Features:**
+- Browse 5 pre-built templates across categories (datacenter, commercial, residential, industrial, infrastructure)
+- Category filtering with horizontal chip selector
+- Template detail modal showing phases, tasks, duration, budget, and skill requirements
+- AI-powered template generation for managers/admins (POST /api/templates/generate)
+- Apply template to create new project with pre-configured tasks (POST /api/templates/:id/apply)
+
+**API Endpoints:**
+- GET /api/templates - List all templates
+- GET /api/templates/:id - Get template details with phases
+- POST /api/templates/generate - AI generates a new template from description
+- POST /api/templates/:id/apply - Apply template to create a new project
+
+**Role Permissions:**
+- All users: View templates and details
+- lead/foreman/project_manager/admin: Apply templates to create projects
+- project_manager/admin: Generate new templates with AI
