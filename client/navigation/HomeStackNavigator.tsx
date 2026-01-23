@@ -8,6 +8,9 @@ import CrewScreen from "@/screens/CrewScreen";
 import TimesheetScreen from "@/screens/TimesheetScreen";
 import NotificationsScreen from "@/screens/NotificationsScreen";
 import AIFeaturesScreen from "@/screens/AIFeaturesScreen";
+import MessagesScreen from "@/screens/MessagesScreen";
+import ComposeMessageScreen from "@/screens/ComposeMessageScreen";
+import MessageDetailScreen from "@/screens/MessageDetailScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -20,6 +23,9 @@ export type HomeStackParamList = {
   Timesheet: undefined;
   Notifications: undefined;
   AIFeatures: undefined;
+  Messages: undefined;
+  ComposeMessage: undefined;
+  MessageDetail: { messageId: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -83,6 +89,27 @@ export default function HomeStackNavigator() {
         component={AIFeaturesScreen}
         options={{
           headerTitle: "AI Tools",
+        }}
+      />
+      <Stack.Screen
+        name="Messages"
+        component={MessagesScreen}
+        options={{
+          headerTitle: "Messages",
+        }}
+      />
+      <Stack.Screen
+        name="ComposeMessage"
+        component={ComposeMessageScreen}
+        options={{
+          headerTitle: "New Message",
+        }}
+      />
+      <Stack.Screen
+        name="MessageDetail"
+        component={MessageDetailScreen}
+        options={{
+          headerTitle: "Message",
         }}
       />
     </Stack.Navigator>

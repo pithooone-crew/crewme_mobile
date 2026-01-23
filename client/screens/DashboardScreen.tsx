@@ -349,13 +349,51 @@ export default function DashboardScreen() {
             <ThemedText style={styles.quickActionText}>AI Tools</ThemedText>
           </Pressable>
         ) : (
-          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Projects")}>
-            <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + "20" }]}>
-              <Feather name="award" size={20} color={Colors.primary} />
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Messages")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: "#00BFA5" + "20" }]}>
+              <Feather name="mail" size={20} color="#00BFA5" />
             </View>
-            <ThemedText style={styles.quickActionText}>Progress</ThemedText>
+            <ThemedText style={styles.quickActionText}>Messages</ThemedText>
           </Pressable>
         )}
+      </View>
+
+      <View style={styles.quickActions}>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Messages")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: "#00BFA5" + "20" }]}>
+            <Feather name="mail" size={20} color="#00BFA5" />
+          </View>
+          <ThemedText style={styles.quickActionText}>Messages</ThemedText>
+        </Pressable>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Notifications")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: "#7B1FA2" + "20" }]}>
+            <Feather name="bell" size={20} color="#7B1FA2" />
+          </View>
+          <ThemedText style={styles.quickActionText}>Alerts</ThemedText>
+        </Pressable>
+        {isAtLeast.lead ? (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Crew")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + "20" }]}>
+              <Feather name="users" size={20} color={Colors.secondary} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Crew</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("StarPerformer")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.xpGold + "20" }]}>
+              <Feather name="star" size={20} color={Colors.xpGold} />
+            </View>
+            <ThemedText style={styles.quickActionText}>Top Worker</ThemedText>
+          </Pressable>
+        )}
+        {isAtLeast.lead ? (
+          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Notifications")}>
+            <View style={[styles.quickActionIcon, { backgroundColor: "#7B1FA2" + "20" }]}>
+              <Feather name="bell" size={20} color="#7B1FA2" />
+            </View>
+            <ThemedText style={styles.quickActionText}>Alerts</ThemedText>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.statsRow}>
