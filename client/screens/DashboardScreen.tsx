@@ -256,6 +256,33 @@ export default function DashboardScreen() {
         />
       </Card>
 
+      <View style={styles.quickActions}>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Projects")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + "20" }]}>
+            <Feather name="briefcase" size={20} color={Colors.primary} />
+          </View>
+          <ThemedText style={styles.quickActionText}>Projects</ThemedText>
+        </Pressable>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Crew")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + "20" }]}>
+            <Feather name="users" size={20} color={Colors.secondary} />
+          </View>
+          <ThemedText style={styles.quickActionText}>Crew</ThemedText>
+        </Pressable>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Timesheet")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent + "20" }]}>
+            <Feather name="clock" size={20} color={Colors.accent} />
+          </View>
+          <ThemedText style={styles.quickActionText}>Timesheet</ThemedText>
+        </Pressable>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Notifications")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: "#7B1FA2" + "20" }]}>
+            <Feather name="bell" size={20} color="#7B1FA2" />
+          </View>
+          <ThemedText style={styles.quickActionText}>Alerts</ThemedText>
+        </Pressable>
+      </View>
+
       <View style={styles.statsRow}>
         <Card style={styles.statCard}>
           <Feather name="check-circle" size={24} color={Colors.success} />
@@ -445,5 +472,25 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
+  },
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: Spacing.lg,
+  },
+  quickAction: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: BorderRadius.lg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

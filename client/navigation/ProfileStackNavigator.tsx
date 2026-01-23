@@ -2,11 +2,13 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileScreen from "@/screens/ProfileScreen";
 import RewardsStoreScreen from "@/screens/RewardsStoreScreen";
+import SettingsScreen from "@/screens/SettingsScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProfileStackParamList = {
   Profile: undefined;
   RewardsStore: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -28,6 +30,13 @@ export default function ProfileStackNavigator() {
         component={RewardsStoreScreen}
         options={{
           headerTitle: "Rewards Store",
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerTitle: "Settings",
         }}
       />
     </Stack.Navigator>

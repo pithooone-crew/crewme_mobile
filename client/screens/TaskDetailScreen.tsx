@@ -4,6 +4,9 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Pressable,
+  Image,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -11,6 +14,7 @@ import { useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -45,6 +49,8 @@ export default function TaskDetailScreen() {
   const queryClient = useQueryClient();
   const { taskId } = route.params;
   const [localStatus, setLocalStatus] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [cameraPermission, requestCameraPermission] = ImagePicker.useCameraPermissions();
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["/api/tasks", taskId],
@@ -79,6 +85,45 @@ export default function TaskDetailScreen() {
 
   const handleStatusUpdate = (newStatus: string) => {
     updateStatusMutation.mutate(newStatus);
+  };
+
+  const takePhoto = async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const newPhoto = result.assets[0].uri;
+      setPhotos([...photos, newPhoto]);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const newPhotos = result.assets.map((asset) => asset.uri);
+      setPhotos([...photos, ...newPhotos]);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    const newPhotos = [...photos];
+    newPhotos.splice(index, 1);
+    setPhotos(newPhotos);
   };
 
   if (isLoading || !task) {
@@ -205,19 +250,42 @@ export default function TaskDetailScreen() {
         </Card>
       ) : null}
 
-      {task.photos.length > 0 ? (
-        <Card style={styles.detailsCard}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Photos ({task.photos.length})
-          </ThemedText>
+      <Card style={styles.detailsCard}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Photos ({task.photos.length + photos.length})
+        </ThemedText>
+        
+        {photos.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
+            {photos.map((photo, index) => (
+              <View key={index} style={styles.photoContainer}>
+                <Image source={{ uri: photo }} style={styles.photo} />
+                <Pressable style={styles.removePhotoButton} onPress={() => removePhoto(index)}>
+                  <Feather name="x" size={14} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ) : task.photos.length > 0 ? (
           <View style={styles.photosPlaceholder}>
             <Feather name="image" size={32} color={theme.textSecondary} />
             <ThemedText style={{ color: theme.textSecondary }}>
               {task.photos.length} photo(s) attached
             </ThemedText>
           </View>
-        </Card>
-      ) : null}
+        ) : null}
+
+        <View style={styles.photoActions}>
+          <Pressable style={styles.photoButton} onPress={takePhoto}>
+            <Feather name="camera" size={20} color={Colors.primary} />
+            <ThemedText style={styles.photoButtonText}>Take Photo</ThemedText>
+          </Pressable>
+          <Pressable style={styles.photoButton} onPress={pickImage}>
+            <Feather name="image" size={20} color={Colors.primary} />
+            <ThemedText style={styles.photoButtonText}>Gallery</ThemedText>
+          </Pressable>
+        </View>
+      </Card>
 
       <View style={styles.actionsContainer}>
         {currentStatus === "pending" ? (
@@ -344,6 +412,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.xl,
     gap: Spacing.sm,
+  },
+  photosScroll: {
+    marginBottom: Spacing.md,
+  },
+  photoContainer: {
+    marginRight: Spacing.sm,
+    position: "relative",
+  },
+  photo: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.sm,
+  },
+  removePhotoButton: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  photoButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.primary + "15",
+    borderRadius: BorderRadius.sm,
+  },
+  photoButtonText: {
+    color: Colors.primary,
+    fontWeight: "600",
   },
   actionsContainer: {
     marginTop: Spacing.xl,
