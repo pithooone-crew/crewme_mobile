@@ -60,6 +60,18 @@ export default function TimesheetScreen() {
   const totalHours = entries.reduce((sum, entry) => sum + (entry.hoursWorked || 0), 0);
   const approvedHours = entries.filter(e => e.status === "approved").reduce((sum, e) => sum + (e.hoursWorked || 0), 0);
 
+  const projectBreakdown = entries.reduce((acc, entry) => {
+    const projectName = entry.projectName || "General";
+    if (!acc[projectName]) {
+      acc[projectName] = { hours: 0, entries: 0 };
+    }
+    acc[projectName].hours += entry.hoursWorked || 0;
+    acc[projectName].entries += 1;
+    return acc;
+  }, {} as Record<string, { hours: number; entries: number }>);
+
+  const sortedProjects = Object.entries(projectBreakdown).sort((a, b) => b[1].hours - a[1].hours);
+
   const groupedByDate = entries.reduce((groups, entry) => {
     const date = new Date(entry.clockIn).toDateString();
     if (!groups[date]) groups[date] = [];
@@ -93,6 +105,26 @@ export default function TimesheetScreen() {
             </View>
           </View>
         </Card>
+
+        {sortedProjects.length > 0 ? (
+          <Card style={styles.projectBreakdownCard}>
+            <View style={styles.projectBreakdownHeader}>
+              <Text style={styles.projectBreakdownTitle}>Time by Project</Text>
+            </View>
+            {sortedProjects.map(([projectName, data]) => (
+              <View key={projectName} style={styles.projectRow}>
+                <View style={styles.projectInfo}>
+                  <Feather name="briefcase" size={16} color={Colors.primary} />
+                  <Text style={styles.projectRowName}>{projectName}</Text>
+                </View>
+                <View style={styles.projectStats}>
+                  <Text style={styles.projectHours}>{data.hours.toFixed(1)}h</Text>
+                  <Text style={styles.projectEntries}>{data.entries} {data.entries === 1 ? "entry" : "entries"}</Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        ) : null}
 
         {canViewAllTimesheets ? (
           <View style={styles.scopeToggle}>
@@ -353,5 +385,48 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
+  },
+  projectBreakdownCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+  },
+  projectBreakdownHeader: {
+    marginBottom: Spacing.md,
+  },
+  projectBreakdownTitle: {
+    fontWeight: "700",
+    fontSize: FontSizes.md,
+    color: Colors.text,
+  },
+  projectRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  projectInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  projectRowName: {
+    fontSize: FontSizes.sm,
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  projectStats: {
+    alignItems: "flex-end",
+  },
+  projectHours: {
+    fontWeight: "700",
+    fontSize: FontSizes.md,
+    color: Colors.secondary,
+  },
+  projectEntries: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
   },
 });

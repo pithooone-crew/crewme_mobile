@@ -20,6 +20,7 @@ import { TaskCard } from "@/components/TaskCard";
 import { BadgeCard } from "@/components/BadgeCard";
 import { ClockButton } from "@/components/ClockButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
+import { ProjectSelectorModal, ProjectOption } from "@/components/ProjectSelectorModal";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
@@ -41,7 +42,18 @@ export default function DashboardScreen() {
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState("");
+  const [selectedProject, setSelectedProject] = useState<ProjectOption | null>(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const availableProjects: ProjectOption[] = [
+    { id: "1", name: "Downtown Tower", location: "123 Main St" },
+    { id: "2", name: "Harbor Bridge Repair", location: "Harbor District" },
+    { id: "3", name: "City Mall Renovation", location: "456 Commerce Ave" },
+    { id: "4", name: "Residential Complex", location: "789 Oak Lane" },
+    { id: "5", name: "Office Park Phase 2", location: "Business Center Dr" },
+  ];
 
   // Format elapsed time as "Xh Ym Zs"
   const formatElapsedTime = (startTime: Date) => {
@@ -103,7 +115,16 @@ export default function DashboardScreen() {
   });
 
   const handleClockIn = async (location: { latitude: number; longitude: number }) => {
+    setPendingLocation(location);
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSelect = async (project: ProjectOption) => {
+    setShowProjectModal(false);
+    setSelectedProject(project);
     const now = new Date();
+    const location = pendingLocation || { latitude: 0, longitude: 0 };
+
     if (isDemoMode) {
       setIsClockedIn(true);
       setClockInTime(now);
@@ -131,6 +152,7 @@ export default function DashboardScreen() {
     if (isDemoMode) {
       setIsClockedIn(false);
       setClockInTime(null);
+      setSelectedProject(null);
       return;
     }
     try {
@@ -138,16 +160,19 @@ export default function DashboardScreen() {
       if (response.data || !response.error) {
         setIsClockedIn(false);
         setClockInTime(null);
+        setSelectedProject(null);
         refetch();
       } else {
         console.log("Clock out API error:", response.error);
         setIsClockedIn(false);
         setClockInTime(null);
+        setSelectedProject(null);
       }
     } catch (err) {
       console.error("Clock out failed:", err);
       setIsClockedIn(false);
       setClockInTime(null);
+      setSelectedProject(null);
     }
   };
 
@@ -236,6 +261,12 @@ export default function DashboardScreen() {
         </ThemedText>
         {isClockedIn && clockInTime ? (
           <View style={styles.clockInfoContainer}>
+            {selectedProject ? (
+              <View style={styles.projectBadge}>
+                <Feather name="briefcase" size={14} color={Colors.primary} />
+                <ThemedText style={styles.projectBadgeText}>{selectedProject.name}</ThemedText>
+              </View>
+            ) : null}
             <ThemedText style={[styles.clockTime, { color: theme.textSecondary }]}>
               Clocked in at{" "}
               {clockInTime.toLocaleTimeString([], {
@@ -257,6 +288,13 @@ export default function DashboardScreen() {
           onClockOut={handleClockOut}
         />
       </Card>
+
+      <ProjectSelectorModal
+        visible={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        onSelect={handleProjectSelect}
+        projects={availableProjects}
+      />
 
       <View style={styles.quickActions}>
         <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Projects")}>
@@ -448,6 +486,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
+  },
+  projectBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    backgroundColor: Colors.primary + "15",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.sm,
+  },
+  projectBadgeText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
   },
   statsRow: {
     flexDirection: "row",
