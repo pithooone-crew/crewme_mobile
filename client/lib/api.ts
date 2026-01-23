@@ -217,6 +217,35 @@ export const api = {
         method: "POST",
       }),
   },
+
+  messages: {
+    list: (filters?: { status?: string; priority?: string }) =>
+      request<CrewMessage[]>(`/api/crew-messages${filters ? `?${new URLSearchParams(filters as Record<string, string>).toString()}` : ""}`),
+    get: (id: string) => request<CrewMessage>(`/api/crew-messages/${id}`),
+    create: (data: CreateMessageData) =>
+      request<CrewMessage>("/api/crew-messages", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    reply: (id: string, content: string) =>
+      request<CrewMessage>(`/api/crew-messages/${id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      }),
+    markRead: (id: string) =>
+      request<CrewMessage>(`/api/crew-messages/${id}/read`, {
+        method: "POST",
+      }),
+    markResolved: (id: string, resolutionNotes?: string) =>
+      request<CrewMessage>(`/api/crew-messages/${id}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ resolutionNotes }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean }>(`/api/crew-messages/${id}`, {
+        method: "DELETE",
+      }),
+  },
 };
 
 export interface Task {
@@ -459,4 +488,34 @@ export interface WeatherAlert {
   title: string;
   message: string;
   effectiveDate: string;
+}
+
+export interface CrewMessage {
+  id: string;
+  subject: string;
+  content: string;
+  senderName: string;
+  senderRole: string;
+  senderId?: string;
+  receivedAt: string;
+  status: "unread" | "read" | "replied" | "resolved";
+  priority: "high" | "medium" | "low";
+  sentiment: "positive" | "neutral" | "negative";
+  category: "safety" | "schedule" | "equipment" | "general" | "urgent";
+  projectId?: string;
+  projectName?: string;
+  taskId?: string;
+  aiSummary?: string;
+  timeline?: { date: string; action: string; by: string }[];
+  resolutionNotes?: string;
+}
+
+export interface CreateMessageData {
+  subject: string;
+  content: string;
+  category: "safety" | "schedule" | "equipment" | "general" | "urgent";
+  priority?: "high" | "medium" | "low";
+  projectId?: string;
+  taskId?: string;
+  recipientId?: string;
 }

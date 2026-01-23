@@ -17,32 +17,15 @@ import { Card } from "@/components/Card";
 import { FilterChips } from "@/components/FilterChips";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemedText } from "@/components/ThemedText";
-import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { api, CrewMessage } from "@/lib/api";
 import { HomeStackParamList } from "@/navigation/HomeStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
-export type Message = {
-  id: string;
-  subject: string;
-  content: string;
-  senderName: string;
-  senderRole: string;
-  receivedAt: string;
-  status: "unread" | "read" | "replied" | "resolved";
-  priority: "high" | "medium" | "low";
-  sentiment: "positive" | "neutral" | "negative";
-  category: "safety" | "schedule" | "equipment" | "general" | "urgent";
-  projectName?: string;
-  taskId?: string;
-  aiSummary?: string;
-  timeline?: { date: string; action: string; by: string }[];
-  resolutionNotes?: string;
-};
-
-const mockMessages: Message[] = [
+const mockMessages: CrewMessage[] = [
   {
     id: "msg-1",
     subject: "Safety Equipment Delivery Delayed",
@@ -150,7 +133,7 @@ const priorityFilters = [
   { label: "Low", value: "low" },
 ];
 
-const getSentimentIcon = (sentiment: Message["sentiment"]) => {
+const getSentimentIcon = (sentiment: CrewMessage["sentiment"]) => {
   switch (sentiment) {
     case "positive":
       return { name: "smile" as const, color: Colors.success };
@@ -161,7 +144,7 @@ const getSentimentIcon = (sentiment: Message["sentiment"]) => {
   }
 };
 
-const getStatusColor = (status: Message["status"]) => {
+const getStatusColor = (status: CrewMessage["status"]) => {
   switch (status) {
     case "unread":
       return Colors.primary;
@@ -176,7 +159,7 @@ const getStatusColor = (status: Message["status"]) => {
   }
 };
 
-const getPriorityColor = (priority: Message["priority"]) => {
+const getPriorityColor = (priority: CrewMessage["priority"]) => {
   switch (priority) {
     case "high":
       return Colors.error;
@@ -218,34 +201,38 @@ export default function MessagesScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ["/api/messages"],
+    queryKey: ["/api/crew-messages", statusFilter, priorityFilter],
     queryFn: async () => {
       if (isDemoMode) {
         return mockMessages;
       }
-      return mockMessages;
+      const filters: { status?: string; priority?: string } = {};
+      if (statusFilter !== "all") filters.status = statusFilter;
+      if (priorityFilter !== "all") filters.priority = priorityFilter;
+      const response = await api.messages.list(Object.keys(filters).length > 0 ? filters : undefined);
+      return response.data || mockMessages;
     },
   });
 
   const handleMessagePress = (messageId: string) => {
-    navigation.navigate("MessageDetail" as any, { messageId });
+    navigation.navigate("MessageDetail", { messageId });
   };
 
   const handleComposePress = () => {
-    navigation.navigate("ComposeMessage" as any);
+    navigation.navigate("ComposeMessage");
   };
 
   const onRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
-  const filteredMessages = (messages || []).filter((message: Message) => {
+  const filteredMessages = (messages || []).filter((message: CrewMessage) => {
     const matchesStatus = statusFilter === "all" || message.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || message.priority === priorityFilter;
     return matchesStatus && matchesPriority;
   });
 
-  const renderMessage = ({ item }: { item: Message }) => {
+  const renderMessage = ({ item }: { item: CrewMessage }) => {
     const sentimentIcon = getSentimentIcon(item.sentiment);
     const statusColor = getStatusColor(item.status);
     const priorityColor = getPriorityColor(item.priority);

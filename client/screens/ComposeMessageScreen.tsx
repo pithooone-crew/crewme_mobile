@@ -11,17 +11,20 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
-import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
+import { api, CreateMessageData } from "@/lib/api";
 
-const categories = [
-  { label: "General", value: "general", icon: "message-circle" as const },
-  { label: "Safety", value: "safety", icon: "shield" as const },
-  { label: "Schedule", value: "schedule", icon: "calendar" as const },
-  { label: "Equipment", value: "equipment", icon: "tool" as const },
-  { label: "Urgent", value: "urgent", icon: "alert-triangle" as const },
+const categories: { label: string; value: CreateMessageData["category"]; icon: "message-circle" | "shield" | "calendar" | "tool" | "alert-triangle" }[] = [
+  { label: "General", value: "general", icon: "message-circle" },
+  { label: "Safety", value: "safety", icon: "shield" },
+  { label: "Schedule", value: "schedule", icon: "calendar" },
+  { label: "Equipment", value: "equipment", icon: "tool" },
+  { label: "Urgent", value: "urgent", icon: "alert-triangle" },
 ];
 
 const mockProjects = [
@@ -43,18 +46,46 @@ const mockTasks = [
 export default function ComposeMessageScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const { isDemoMode } = useAuth();
   
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState("general");
+  const [category, setCategory] = useState<CreateMessageData["category"]>("general");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
 
   const filteredTasks = mockTasks.filter(
     (task) => !selectedProject || task.projectId === selectedProject
   );
+
+  const createMutation = useMutation({
+    mutationFn: async (data: CreateMessageData) => {
+      if (isDemoMode) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return { data: { id: "new-msg", ...data } };
+      }
+      return api.messages.create(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+      if (Platform.OS === "web") {
+        alert("Message sent successfully!");
+      } else {
+        Alert.alert("Success", "Your message has been sent");
+      }
+      navigation.goBack();
+    },
+    onError: (error: any) => {
+      const message = error?.message || "Failed to send message";
+      if (Platform.OS === "web") {
+        alert(message);
+      } else {
+        Alert.alert("Error", message);
+      }
+    },
+  });
 
   const handleSend = async () => {
     if (!subject.trim()) {
@@ -74,16 +105,16 @@ export default function ComposeMessageScreen() {
       return;
     }
 
-    setIsSending(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSending(false);
+    const messageData: CreateMessageData = {
+      subject: subject.trim(),
+      content: content.trim(),
+      category,
+      priority: category === "urgent" ? "high" : "medium",
+      projectId: selectedProject || undefined,
+      taskId: selectedTask || undefined,
+    };
 
-    if (Platform.OS === "web") {
-      alert("Message sent successfully!");
-    } else {
-      Alert.alert("Success", "Your message has been sent");
-    }
-    navigation.goBack();
+    createMutation.mutate(messageData);
   };
 
   return (
@@ -304,19 +335,19 @@ export default function ComposeMessageScreen() {
         <Pressable
           style={[
             styles.sendButton,
-            isSending && styles.sendButtonDisabled,
+            createMutation.isPending && styles.sendButtonDisabled,
           ]}
           onPress={handleSend}
-          disabled={isSending}
+          disabled={createMutation.isPending}
           testID="button-send"
         >
           <Feather
-            name={isSending ? "loader" : "send"}
+            name={createMutation.isPending ? "loader" : "send"}
             size={20}
             color="#FFFFFF"
           />
           <ThemedText type="body" style={styles.sendButtonText}>
-            {isSending ? "Sending..." : "Send Message"}
+            {createMutation.isPending ? "Sending..." : "Send Message"}
           </ThemedText>
         </Pressable>
       </ScrollView>

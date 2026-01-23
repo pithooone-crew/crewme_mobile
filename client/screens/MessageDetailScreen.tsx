@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -7,21 +7,24 @@ import {
   TextInput,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { Message } from "./MessagesScreen";
+import { useAuth } from "@/context/AuthContext";
+import { api, CrewMessage } from "@/lib/api";
 
 type RouteParams = {
   MessageDetail: { messageId: string };
 };
 
-const mockMessages: Message[] = [
+const mockMessages: CrewMessage[] = [
   {
     id: "msg-1",
     subject: "Safety Equipment Delivery Delayed",
@@ -114,7 +117,7 @@ const mockMessages: Message[] = [
   },
 ];
 
-const getSentimentIcon = (sentiment: Message["sentiment"]) => {
+const getSentimentIcon = (sentiment: CrewMessage["sentiment"]) => {
   switch (sentiment) {
     case "positive":
       return { name: "smile" as const, color: Colors.success };
@@ -125,7 +128,7 @@ const getSentimentIcon = (sentiment: Message["sentiment"]) => {
   }
 };
 
-const getStatusColor = (status: Message["status"]) => {
+const getStatusColor = (status: CrewMessage["status"]) => {
   switch (status) {
     case "unread":
       return Colors.primary;
@@ -140,7 +143,7 @@ const getStatusColor = (status: Message["status"]) => {
   }
 };
 
-const getPriorityColor = (priority: Message["priority"]) => {
+const getPriorityColor = (priority: CrewMessage["priority"]) => {
   switch (priority) {
     case "high":
       return Colors.error;
@@ -167,14 +170,99 @@ const formatDate = (dateString: string) => {
 export default function MessageDetailScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const { isDemoMode } = useAuth();
   const route = useRoute<RouteProp<RouteParams, "MessageDetail">>();
   const { messageId } = route.params;
 
   const [replyText, setReplyText] = useState("");
   const [showReply, setShowReply] = useState(false);
 
-  const message = mockMessages.find((m) => m.id === messageId);
+  const {
+    data: message,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["/api/crew-messages", messageId],
+    queryFn: async () => {
+      if (isDemoMode) {
+        return mockMessages.find((m) => m.id === messageId) || null;
+      }
+      const response = await api.messages.get(messageId);
+      return response.data || mockMessages.find((m) => m.id === messageId) || null;
+    },
+  });
+
+  useEffect(() => {
+    if (message && message.status === "unread" && !isDemoMode) {
+      api.messages.markRead(messageId);
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+    }
+  }, [message, messageId, isDemoMode, queryClient]);
+
+  const replyMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (isDemoMode) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return { data: { success: true } };
+      }
+      return api.messages.reply(messageId, content);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+      if (Platform.OS === "web") {
+        alert("Reply sent!");
+      } else {
+        Alert.alert("Reply Sent", "Your reply has been sent successfully");
+      }
+      setReplyText("");
+      setShowReply(false);
+    },
+    onError: (error: any) => {
+      const msg = error?.message || "Failed to send reply";
+      if (Platform.OS === "web") {
+        alert(msg);
+      } else {
+        Alert.alert("Error", msg);
+      }
+    },
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: async () => {
+      if (isDemoMode) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return { data: { success: true } };
+      }
+      return api.messages.markResolved(messageId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crew-messages"] });
+      if (Platform.OS === "web") {
+        alert("Message marked as resolved");
+      } else {
+        Alert.alert("Resolved", "This message has been marked as resolved");
+      }
+      navigation.goBack();
+    },
+    onError: (error: any) => {
+      const msg = error?.message || "Failed to resolve message";
+      if (Platform.OS === "web") {
+        alert(msg);
+      } else {
+        Alert.alert("Error", msg);
+      }
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: theme.backgroundRoot }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   if (!message) {
     return (
@@ -199,23 +287,11 @@ export default function MessageDetailScreen() {
       }
       return;
     }
-
-    if (Platform.OS === "web") {
-      alert("Reply sent!");
-    } else {
-      Alert.alert("Reply Sent", "Your reply has been sent successfully");
-    }
-    setReplyText("");
-    setShowReply(false);
+    replyMutation.mutate(replyText.trim());
   };
 
   const handleMarkResolved = () => {
-    if (Platform.OS === "web") {
-      alert("Message marked as resolved");
-    } else {
-      Alert.alert("Resolved", "This message has been marked as resolved");
-    }
-    navigation.goBack();
+    resolveMutation.mutate();
   };
 
   return (
@@ -234,7 +310,7 @@ export default function MessageDetailScreen() {
             </ThemedText>
           </View>
           <ThemedText type="body" style={styles.aiSummaryText}>
-            {message.aiSummary}
+            {message.aiSummary || "No AI summary available."}
           </ThemedText>
         </Card>
 
@@ -378,11 +454,12 @@ export default function MessageDetailScreen() {
               <Pressable
                 style={[styles.actionButton, styles.sendReplyButton]}
                 onPress={handleReply}
+                disabled={replyMutation.isPending}
                 testID="button-send-reply"
               >
                 <Feather name="send" size={16} color="#FFFFFF" />
                 <ThemedText type="small" style={{ color: "#FFFFFF" }}>
-                  Send Reply
+                  {replyMutation.isPending ? "Sending..." : "Send Reply"}
                 </ThemedText>
               </Pressable>
             </View>
@@ -401,11 +478,12 @@ export default function MessageDetailScreen() {
           <Pressable
             style={[styles.actionButton, styles.resolveButton]}
             onPress={handleMarkResolved}
+            disabled={resolveMutation.isPending}
             testID="button-resolve"
           >
             <Feather name="check-circle" size={18} color="#FFFFFF" />
             <ThemedText type="small" style={{ color: "#FFFFFF" }}>
-              Mark Resolved
+              {resolveMutation.isPending ? "Resolving..." : "Mark Resolved"}
             </ThemedText>
           </Pressable>
         </View>
@@ -417,6 +495,10 @@ export default function MessageDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centered: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     padding: Spacing.lg,
