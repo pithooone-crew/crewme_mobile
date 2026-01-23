@@ -1,11 +1,12 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Pressable,
   RefreshControl,
-  Alert,
+  Modal,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -18,11 +19,13 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { XPProgressBar } from "@/components/XPProgressBar";
+import { Button } from "@/components/Button";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { api, UserProfile, Certification } from "@/lib/api";
+import { api, Certification } from "@/lib/api";
+import { mockProfile, mockCertifications } from "@/lib/mockData";
 import { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
@@ -33,7 +36,8 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, isDemoMode } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const {
     data: profile,
@@ -42,16 +46,22 @@ export default function ProfileScreen() {
   } = useQuery({
     queryKey: ["/api/profile"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockProfile;
+      }
       const response = await api.profile.get();
-      return response.data;
+      return response.data || mockProfile;
     },
   });
 
   const { data: certifications, refetch: refetchCerts } = useQuery({
     queryKey: ["/api/profile/certifications"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockCertifications;
+      }
       const response = await api.profile.certifications();
-      return response.data || [];
+      return response.data || mockCertifications;
     },
   });
 
@@ -64,18 +74,16 @@ export default function ProfileScreen() {
     navigation.navigate("RewardsStore");
   };
 
-  const handleLogout = () => {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: async () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          await logout();
-        },
-      },
-    ]);
+  const handleLogoutPress = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutModal(false);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    await logout();
   };
 
   const roleLabels: Record<string, string> = {
@@ -87,179 +95,223 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          onRefresh={handleRefresh}
-          tintColor={Colors.primary}
-        />
-      }
-    >
-      <View style={styles.profileHeader}>
-        <View style={[styles.avatar, { backgroundColor: Colors.primary + "20" }]}>
-          <Feather name="user" size={40} color={Colors.primary} />
+    <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+        <View style={styles.profileHeader}>
+          <View style={[styles.avatar, { backgroundColor: Colors.primary + "20" }]}>
+            <Feather name="user" size={40} color={Colors.primary} />
+          </View>
+          {profileLoading ? (
+            <View style={styles.profileInfo}>
+              <LoadingSkeleton width={150} height={24} />
+              <LoadingSkeleton width={100} height={16} style={{ marginTop: Spacing.sm }} />
+            </View>
+          ) : (
+            <View style={styles.profileInfo}>
+              <ThemedText type="h2">
+                {profile?.firstName || user?.firstName}{" "}
+                {profile?.lastName || user?.lastName}
+              </ThemedText>
+              <ThemedText style={{ color: theme.textSecondary }}>
+                {roleLabels[profile?.role || user?.role || "crew_member"]}
+              </ThemedText>
+            </View>
+          )}
         </View>
-        {profileLoading ? (
-          <View style={styles.profileInfo}>
-            <LoadingSkeleton width={150} height={24} />
-            <LoadingSkeleton width={100} height={16} style={{ marginTop: Spacing.sm }} />
-          </View>
-        ) : (
-          <View style={styles.profileInfo}>
-            <ThemedText type="h2">
-              {profile?.firstName || user?.firstName}{" "}
-              {profile?.lastName || user?.lastName}
-            </ThemedText>
-            <ThemedText style={{ color: theme.textSecondary }}>
-              {roleLabels[profile?.role || user?.role || "crew_member"]}
-            </ThemedText>
-          </View>
-        )}
-      </View>
 
-      <Card style={styles.pointsCard} onPress={handleRewardsPress}>
-        <View style={styles.pointsContent}>
-          <View>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              Reward Points
-            </ThemedText>
-            <ThemedText type="h1" style={{ color: Colors.primary }}>
-              {user?.points?.toLocaleString() || 0}
-            </ThemedText>
+        <Card style={styles.pointsCard} onPress={handleRewardsPress}>
+          <View style={styles.pointsContent}>
+            <View>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Reward Points
+              </ThemedText>
+              <ThemedText type="h1" style={{ color: Colors.primary }}>
+                {user?.points?.toLocaleString() || 0}
+              </ThemedText>
+            </View>
+            <View style={styles.rewardsButton}>
+              <Feather name="gift" size={20} color={Colors.primary} />
+              <ThemedText style={{ color: Colors.primary, fontWeight: "600" }}>
+                Rewards Store
+              </ThemedText>
+              <Feather name="chevron-right" size={20} color={Colors.primary} />
+            </View>
           </View>
-          <View style={styles.rewardsButton}>
-            <Feather name="gift" size={20} color={Colors.primary} />
-            <ThemedText style={{ color: Colors.primary, fontWeight: "600" }}>
-              Rewards Store
-            </ThemedText>
-            <Feather name="chevron-right" size={20} color={Colors.primary} />
-          </View>
-        </View>
-      </Card>
+        </Card>
 
-      <Card style={styles.xpCard}>
-        <ThemedText type="h4" style={styles.sectionTitle}>
-          Experience
-        </ThemedText>
-        <XPProgressBar
-          currentXP={user?.xp || 0}
-          nextLevelXP={1000}
-          level={user?.level || 1}
-        />
-      </Card>
-
-      {(profile?.skills || []).length > 0 ? (
-        <Card style={styles.skillsCard}>
+        <Card style={styles.xpCard}>
           <ThemedText type="h4" style={styles.sectionTitle}>
-            Skills
+            Experience
           </ThemedText>
-          <View style={styles.skillsContainer}>
-            {(profile?.skills || []).map((skill, index) => (
-              <View
-                key={index}
-                style={[styles.skillBadge, { backgroundColor: Colors.secondary + "15" }]}
-              >
-                <ThemedText style={{ color: Colors.secondary, fontSize: 13 }}>
-                  {skill}
-                </ThemedText>
+          <XPProgressBar
+            currentXP={user?.xp || 0}
+            nextLevelXP={1000}
+            level={user?.level || 1}
+          />
+        </Card>
+
+        {(profile?.skills || []).length > 0 ? (
+          <Card style={styles.skillsCard}>
+            <ThemedText type="h4" style={styles.sectionTitle}>
+              Skills
+            </ThemedText>
+            <View style={styles.skillsContainer}>
+              {(profile?.skills || []).map((skill, index) => (
+                <View
+                  key={index}
+                  style={[styles.skillBadge, { backgroundColor: Colors.secondary + "15" }]}
+                >
+                  <ThemedText style={{ color: Colors.secondary, fontSize: 13 }}>
+                    {skill}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </Card>
+        ) : null}
+
+        {(certifications || []).length > 0 ? (
+          <Card style={styles.certsCard}>
+            <ThemedText type="h4" style={styles.sectionTitle}>
+              Certifications
+            </ThemedText>
+            {(certifications || []).map((cert: Certification) => (
+              <View key={cert.id} style={styles.certItem}>
+                <View style={styles.certIcon}>
+                  <Feather
+                    name="award"
+                    size={20}
+                    color={cert.status === "active" ? Colors.success : Colors.warning}
+                  />
+                </View>
+                <View style={styles.certInfo}>
+                  <ThemedText type="h4">{cert.name}</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    {cert.issuedBy}
+                  </ThemedText>
+                </View>
+                <View
+                  style={[
+                    styles.certStatus,
+                    {
+                      backgroundColor:
+                        cert.status === "active" ? Colors.success + "20" : Colors.warning + "20",
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={{
+                      fontSize: 11,
+                      color: cert.status === "active" ? Colors.success : Colors.warning,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {cert.status.toUpperCase()}
+                  </ThemedText>
+                </View>
               </View>
             ))}
-          </View>
-        </Card>
-      ) : null}
+          </Card>
+        ) : null}
 
-      {(certifications || []).length > 0 ? (
-        <Card style={styles.certsCard}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Certifications
-          </ThemedText>
-          {(certifications || []).map((cert: Certification) => (
-            <View key={cert.id} style={styles.certItem}>
-              <View style={styles.certIcon}>
-                <Feather
-                  name="award"
-                  size={20}
-                  color={cert.status === "active" ? Colors.success : Colors.warning}
-                />
-              </View>
-              <View style={styles.certInfo}>
-                <ThemedText type="h4">{cert.name}</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  {cert.issuedBy}
-                </ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.certStatus,
-                  {
-                    backgroundColor:
-                      cert.status === "active" ? Colors.success + "20" : Colors.warning + "20",
-                  },
-                ]}
+        <View style={styles.menuSection}>
+          <Pressable
+            style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
+            onPress={() => {}}
+          >
+            <Feather name="edit-3" size={20} color={theme.text} />
+            <ThemedText style={styles.menuText}>Edit Profile</ThemedText>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
+            onPress={() => {}}
+          >
+            <Feather name="bar-chart-2" size={20} color={theme.text} />
+            <ThemedText style={styles.menuText}>Performance History</ThemedText>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
+            onPress={() => {}}
+          >
+            <Feather name="settings" size={20} color={theme.text} />
+            <ThemedText style={styles.menuText}>Settings</ThemedText>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.menuItem, { backgroundColor: Colors.error + "10" }]}
+            onPress={handleLogoutPress}
+            testID="button-logout"
+          >
+            <Feather name="log-out" size={20} color={Colors.error} />
+            <ThemedText style={[styles.menuText, { color: Colors.error }]}>
+              Log Out
+            </ThemedText>
+            <View style={{ width: 20 }} />
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLogoutModal(false)}
+        >
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Feather name="log-out" size={40} color={Colors.error} style={{ marginBottom: Spacing.lg }} />
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Log Out
+            </ThemedText>
+            <ThemedText style={[styles.modalMessage, { color: theme.textSecondary }]}>
+              Are you sure you want to log out of CrewMe?
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <Button
+                variant="secondary"
+                onPress={() => setShowLogoutModal(false)}
+                style={styles.modalButton}
               >
-                <ThemedText
-                  style={{
-                    fontSize: 11,
-                    color: cert.status === "active" ? Colors.success : Colors.warning,
-                    fontWeight: "600",
-                  }}
-                >
-                  {cert.status.toUpperCase()}
-                </ThemedText>
-              </View>
+                Cancel
+              </Button>
+              <Button
+                onPress={handleLogoutConfirm}
+                style={[styles.modalButton, { backgroundColor: Colors.error }]}
+                testID="button-confirm-logout"
+              >
+                Log Out
+              </Button>
             </View>
-          ))}
-        </Card>
-      ) : null}
-
-      <View style={styles.menuSection}>
-        <Pressable
-          style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
-          onPress={() => {}}
-        >
-          <Feather name="edit-3" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>Edit Profile</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
         </Pressable>
-
-        <Pressable
-          style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
-          onPress={() => {}}
-        >
-          <Feather name="bar-chart-2" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>Performance History</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        </Pressable>
-
-        <Pressable
-          style={[styles.menuItem, { backgroundColor: theme.backgroundDefault }]}
-          onPress={() => {}}
-        >
-          <Feather name="settings" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>Settings</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        </Pressable>
-
-        <Pressable
-          style={[styles.menuItem, { backgroundColor: Colors.error + "10" }]}
-          onPress={handleLogout}
-        >
-          <Feather name="log-out" size={20} color={Colors.error} />
-          <ThemedText style={[styles.menuText, { color: Colors.error }]}>
-            Log Out
-          </ThemedText>
-          <View style={{ width: 20 }} />
-        </Pressable>
-      </View>
-    </ScrollView>
+      </Modal>
+    </View>
   );
 }
 
@@ -355,5 +407,34 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing["2xl"],
+    alignItems: "center",
+  },
+  modalTitle: {
+    marginBottom: Spacing.sm,
+  },
+  modalMessage: {
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    width: "100%",
+  },
+  modalButton: {
+    flex: 1,
   },
 });
