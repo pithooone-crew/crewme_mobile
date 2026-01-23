@@ -16,6 +16,8 @@ import { ThemedView } from "@/components/ThemedView";
 
 const SETTINGS_STORAGE_KEY = "@crewme_settings";
 
+type SettingsTab = "appearance" | "notifications" | "usage" | "data";
+
 interface Settings {
   pushNotifications: boolean;
   taskReminders: boolean;
@@ -49,8 +51,9 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { user, logout } = useAuth();
-  const { theme } = useTheme();
+  const { theme, themeMode, setThemeMode, isDark } = useTheme();
   
+  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -143,6 +146,20 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleThemeSelect = (mode: "light" | "dark" | "system") => {
+    if (settings.hapticFeedback && Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setThemeMode(mode);
+  };
+
+  const tabs: { id: SettingsTab; label: string; icon: keyof typeof Feather.glyphMap }[] = [
+    { id: "appearance", label: "Appearance", icon: "eye" },
+    { id: "notifications", label: "Alerts", icon: "bell" },
+    { id: "usage", label: "Usage", icon: "bar-chart-2" },
+    { id: "data", label: "Data", icon: "database" },
+  ];
+
   const SettingRow = ({ 
     icon, 
     title, 
@@ -163,183 +180,268 @@ export default function SettingsScreen() {
     disabled?: boolean;
   }) => (
     <Pressable 
-      style={[styles.settingRow, disabled && styles.settingRowDisabled]} 
+      style={[styles.settingRow, disabled ? styles.settingRowDisabled : null]} 
       onPress={onPress} 
       disabled={disabled || (!onPress && !onToggle)}
       testID={`setting-${title.toLowerCase().replace(/\s+/g, "-")}`}
     >
       <View style={[styles.settingIcon, { backgroundColor: `${Colors.primary}15` }]}>
-        <Feather name={icon} size={20} color={disabled ? Colors.textSecondary : Colors.primary} />
+        <Feather name={icon} size={20} color={disabled ? theme.textSecondary : Colors.primary} />
       </View>
       <View style={styles.settingContent}>
-        <ThemedText style={[styles.settingTitle, disabled && styles.settingTitleDisabled]}>{title}</ThemedText>
+        <ThemedText style={[styles.settingTitle, disabled ? styles.settingTitleDisabled : null]}>{title}</ThemedText>
         {subtitle ? <ThemedText style={styles.settingSubtitle}>{subtitle}</ThemedText> : null}
       </View>
       {onToggle ? (
         <Switch
           value={value}
           onValueChange={onToggle}
-          trackColor={{ false: Colors.border, true: Colors.primary }}
+          trackColor={{ false: theme.border, true: Colors.primary }}
           thumbColor="#fff"
           disabled={disabled}
         />
       ) : null}
-      {showArrow ? <Feather name="chevron-right" size={20} color={Colors.textSecondary} /> : null}
+      {showArrow ? <Feather name="chevron-right" size={20} color={theme.textSecondary} /> : null}
     </Pressable>
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+    <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</ThemedText>
+  );
+
+  const ThemeOption = ({ mode, label, icon }: { mode: "light" | "dark" | "system"; label: string; icon: keyof typeof Feather.glyphMap }) => (
+    <Pressable
+      style={[
+        styles.themeOption,
+        { backgroundColor: theme.backgroundSecondary, borderColor: themeMode === mode ? Colors.primary : theme.border },
+        themeMode === mode ? styles.themeOptionSelected : null,
+      ]}
+      onPress={() => handleThemeSelect(mode)}
+    >
+      <Feather name={icon} size={24} color={themeMode === mode ? Colors.primary : theme.textSecondary} />
+      <ThemedText style={[styles.themeLabel, themeMode === mode ? { color: Colors.primary } : null]}>{label}</ThemedText>
+      {themeMode === mode ? (
+        <Feather name="check-circle" size={18} color={Colors.primary} style={styles.themeCheck} />
+      ) : null}
+    </Pressable>
+  );
+
+  const renderAppearanceTab = () => (
+    <>
+      <Card style={styles.section}>
+        <SectionHeader title="Theme" />
+        <View style={styles.themeOptions}>
+          <ThemeOption mode="light" label="Light" icon="sun" />
+          <ThemeOption mode="dark" label="Dark" icon="moon" />
+          <ThemeOption mode="system" label="System" icon="smartphone" />
+        </View>
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionHeader title="App Experience" />
+        <SettingRow
+          icon="smartphone"
+          title="Haptic Feedback"
+          subtitle="Vibration feedback on actions"
+          value={settings.hapticFeedback}
+          onToggle={(v) => updateSetting("hapticFeedback", v)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="volume-2"
+          title="Sound Effects"
+          subtitle="Play sounds for notifications"
+          value={settings.soundEffects}
+          onToggle={(v) => updateSetting("soundEffects", v)}
+        />
+      </Card>
+    </>
+  );
+
+  const renderNotificationsTab = () => (
+    <>
+      <Card style={styles.section}>
+        <SectionHeader title="Notifications" />
+        <SettingRow
+          icon="bell"
+          title="Push Notifications"
+          subtitle="Enable all notifications"
+          value={settings.pushNotifications}
+          onToggle={(v) => updateSetting("pushNotifications", v)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="mail"
+          title="Message Alerts"
+          subtitle="New messages from your crew"
+          value={settings.messageAlerts}
+          onToggle={(v) => updateSetting("messageAlerts", v)}
+          disabled={!settings.pushNotifications}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="clipboard"
+          title="Task Reminders"
+          subtitle="Get reminders for upcoming tasks"
+          value={settings.taskReminders}
+          onToggle={(v) => updateSetting("taskReminders", v)}
+          disabled={!settings.pushNotifications}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="calendar"
+          title="Schedule Alerts"
+          subtitle="Notify about schedule changes"
+          value={settings.scheduleAlerts}
+          onToggle={(v) => updateSetting("scheduleAlerts", v)}
+          disabled={!settings.pushNotifications}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="award"
+          title="Achievement Alerts"
+          subtitle="Celebrate your accomplishments"
+          value={settings.achievementAlerts}
+          onToggle={(v) => updateSetting("achievementAlerts", v)}
+          disabled={!settings.pushNotifications}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="cloud"
+          title="Weather Alerts"
+          subtitle="Get weather-related notifications"
+          value={settings.weatherAlerts}
+          onToggle={(v) => updateSetting("weatherAlerts", v)}
+          disabled={!settings.pushNotifications}
+        />
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionHeader title="Messages" />
+        <SettingRow
+          icon="check-circle"
+          title="Send Read Receipts"
+          subtitle="Let senders know when you read messages"
+          value={settings.readReceipts}
+          onToggle={(v) => updateSetting("readReceipts", v)}
+        />
+      </Card>
+    </>
+  );
+
+  const renderUsageTab = () => (
+    <>
+      <Card style={styles.section}>
+        <SectionHeader title="Time Clock" />
+        <SettingRow
+          icon="map-pin"
+          title="Location Services"
+          subtitle="Enable GPS for clock in/out verification"
+          value={settings.locationServices}
+          onToggle={(v) => updateSetting("locationServices", v)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="clock"
+          title="Auto Clock Reminder"
+          subtitle="Remind me to clock in when arriving at site"
+          value={settings.autoClockReminder}
+          onToggle={(v) => updateSetting("autoClockReminder", v)}
+          disabled={!settings.locationServices}
+        />
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionHeader title="Subscription" />
+        <View style={styles.subscriptionInfo}>
+          <View style={[styles.planBadge, { backgroundColor: `${Colors.primary}20` }]}>
+            <ThemedText style={[styles.planText, { color: Colors.primary }]}>Pro Plan</ThemedText>
+          </View>
+          <ThemedText style={[styles.subscriptionDetail, { color: theme.textSecondary }]}>
+            Full access to all features
+          </ThemedText>
+        </View>
+      </Card>
+    </>
+  );
+
+  const renderDataTab = () => (
+    <>
+      <Card style={styles.section}>
+        <SectionHeader title="Data & Storage" />
+        <SettingRow
+          icon="refresh-cw"
+          title="Reset Settings"
+          subtitle="Restore all settings to defaults"
+          showArrow
+          onPress={handleResetSettings}
+        />
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionHeader title="Legal" />
+        <SettingRow
+          icon="file-text"
+          title="Privacy Policy"
+          showArrow
+          onPress={openPrivacyPolicy}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="book"
+          title="Terms of Service"
+          showArrow
+          onPress={openTermsOfService}
+        />
+      </Card>
+    </>
   );
 
   return (
     <ThemedView style={styles.container}>
+      <View style={[styles.tabBar, { paddingTop: headerHeight + Spacing.sm, backgroundColor: theme.backgroundRoot, borderBottomColor: theme.border }]}>
+        {tabs.map((tab) => (
+          <Pressable
+            key={tab.id}
+            style={[styles.tab, activeTab === tab.id ? styles.tabActive : null]}
+            onPress={() => setActiveTab(tab.id)}
+          >
+            <Feather
+              name={tab.icon}
+              size={18}
+              color={activeTab === tab.id ? Colors.primary : theme.textSecondary}
+            />
+            <ThemedText
+              style={[
+                styles.tabLabel,
+                { color: activeTab === tab.id ? Colors.primary : theme.textSecondary },
+              ]}
+            >
+              {tab.label}
+            </ThemedText>
+            {activeTab === tab.id ? (
+              <View style={[styles.tabIndicator, { backgroundColor: Colors.primary }]} />
+            ) : null}
+          </Pressable>
+        ))}
+      </View>
+
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent, 
           { 
-            paddingTop: headerHeight + Spacing.md, 
             paddingBottom: tabBarHeight + Spacing.xl 
           }
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.section}>
-          <SectionHeader title="Notifications" />
-          <SettingRow
-            icon="bell"
-            title="Push Notifications"
-            subtitle="Enable all notifications"
-            value={settings.pushNotifications}
-            onToggle={(v) => updateSetting("pushNotifications", v)}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="mail"
-            title="Message Alerts"
-            subtitle="New messages from your crew"
-            value={settings.messageAlerts}
-            onToggle={(v) => updateSetting("messageAlerts", v)}
-            disabled={!settings.pushNotifications}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="clipboard"
-            title="Task Reminders"
-            subtitle="Get reminders for upcoming tasks"
-            value={settings.taskReminders}
-            onToggle={(v) => updateSetting("taskReminders", v)}
-            disabled={!settings.pushNotifications}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="calendar"
-            title="Schedule Alerts"
-            subtitle="Notify about schedule changes"
-            value={settings.scheduleAlerts}
-            onToggle={(v) => updateSetting("scheduleAlerts", v)}
-            disabled={!settings.pushNotifications}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="award"
-            title="Achievement Alerts"
-            subtitle="Celebrate your accomplishments"
-            value={settings.achievementAlerts}
-            onToggle={(v) => updateSetting("achievementAlerts", v)}
-            disabled={!settings.pushNotifications}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="cloud"
-            title="Weather Alerts"
-            subtitle="Get weather-related notifications"
-            value={settings.weatherAlerts}
-            onToggle={(v) => updateSetting("weatherAlerts", v)}
-            disabled={!settings.pushNotifications}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <SectionHeader title="Messages" />
-          <SettingRow
-            icon="check-circle"
-            title="Send Read Receipts"
-            subtitle="Let senders know when you read messages"
-            value={settings.readReceipts}
-            onToggle={(v) => updateSetting("readReceipts", v)}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <SectionHeader title="Time Clock" />
-          <SettingRow
-            icon="map-pin"
-            title="Location Services"
-            subtitle="Enable GPS for clock in/out verification"
-            value={settings.locationServices}
-            onToggle={(v) => updateSetting("locationServices", v)}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="clock"
-            title="Auto Clock Reminder"
-            subtitle="Remind me to clock in when arriving at site"
-            value={settings.autoClockReminder}
-            onToggle={(v) => updateSetting("autoClockReminder", v)}
-            disabled={!settings.locationServices}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <SectionHeader title="App Experience" />
-          <SettingRow
-            icon="smartphone"
-            title="Haptic Feedback"
-            subtitle="Vibration feedback on actions"
-            value={settings.hapticFeedback}
-            onToggle={(v) => updateSetting("hapticFeedback", v)}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="volume-2"
-            title="Sound Effects"
-            subtitle="Play sounds for notifications"
-            value={settings.soundEffects}
-            onToggle={(v) => updateSetting("soundEffects", v)}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <SectionHeader title="Legal" />
-          <SettingRow
-            icon="file-text"
-            title="Privacy Policy"
-            showArrow
-            onPress={openPrivacyPolicy}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="book"
-            title="Terms of Service"
-            showArrow
-            onPress={openTermsOfService}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <SectionHeader title="Data & Storage" />
-          <SettingRow
-            icon="refresh-cw"
-            title="Reset Settings"
-            subtitle="Restore all settings to defaults"
-            showArrow
-            onPress={handleResetSettings}
-          />
-        </Card>
+        {activeTab === "appearance" ? renderAppearanceTab() : null}
+        {activeTab === "notifications" ? renderNotificationsTab() : null}
+        {activeTab === "usage" ? renderUsageTab() : null}
+        {activeTab === "data" ? renderDataTab() : null}
 
         <Pressable 
-          style={styles.logoutButton} 
+          style={[styles.logoutButton, { backgroundColor: isDark ? "#3D1A1A" : "#FFEBEE" }]} 
           onPress={handleLogout}
           testID="button-logout"
         >
@@ -347,10 +449,10 @@ export default function SettingsScreen() {
           <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
         </Pressable>
 
-        <ThemedText style={styles.footerText}>
+        <ThemedText style={[styles.footerText, { color: theme.textSecondary }]}>
           Signed in as {user?.email || "demo@crewme.app"}
         </ThemedText>
-        <ThemedText style={styles.versionText}>CrewMe v1.0.0</ThemedText>
+        <ThemedText style={[styles.versionText, { color: theme.textSecondary }]}>CrewMe v1.0.0</ThemedText>
       </ScrollView>
     </ThemedView>
   );
@@ -360,8 +462,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  tabBar: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.sm,
+    borderBottomWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    position: "relative",
+  },
+  tabActive: {},
+  tabLabel: {
+    fontSize: FontSizes.xs,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  tabIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: Spacing.md,
+    right: Spacing.md,
+    height: 3,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
   scrollContent: {
     paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
   },
   section: {
     marginBottom: Spacing.md,
@@ -369,10 +498,33 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontWeight: "700",
     fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: Spacing.md,
+  },
+  themeOptions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  themeOption: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 2,
+  },
+  themeOptionSelected: {
+    borderWidth: 2,
+  },
+  themeLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: "600",
+    marginTop: Spacing.sm,
+  },
+  themeCheck: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
   },
   settingRow: {
     flexDirection: "row",
@@ -407,9 +559,25 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
     marginVertical: Spacing.xs,
     marginLeft: 52,
+  },
+  subscriptionInfo: {
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+  },
+  planBadge: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.sm,
+  },
+  planText: {
+    fontWeight: "700",
+    fontSize: FontSizes.md,
+  },
+  subscriptionDetail: {
+    fontSize: FontSizes.sm,
   },
   logoutButton: {
     flexDirection: "row",
@@ -418,7 +586,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
     marginTop: Spacing.md,
-    backgroundColor: "#FFEBEE",
     borderRadius: BorderRadius.md,
   },
   logoutText: {
@@ -428,13 +595,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
     textAlign: "center",
     marginTop: Spacing.md,
   },
   versionText: {
     fontSize: FontSizes.xs,
-    color: Colors.textSecondary,
     textAlign: "center",
     marginTop: Spacing.xs,
     opacity: 0.6,

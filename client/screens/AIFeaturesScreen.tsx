@@ -130,7 +130,7 @@ export default function AIFeaturesScreen() {
             onPress={() => handleFeaturePress(feature)}
             disabled={!hasAccess}
           >
-            <Card style={[styles.featureCard, !hasAccess && styles.featureCardDisabled]}>
+            <Card style={[styles.featureCard, !hasAccess ? styles.featureCardDisabled : null]}>
               <View style={styles.featureRow}>
                 <View style={[styles.featureIcon, { backgroundColor: `${feature.color}20` }]}>
                   <Feather name={feature.icon} size={24} color={hasAccess ? feature.color : theme.textSecondary} />
