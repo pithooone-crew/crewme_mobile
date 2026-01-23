@@ -386,14 +386,12 @@ export default function DashboardScreen() {
             <ThemedText style={styles.quickActionText}>Top Worker</ThemedText>
           </Pressable>
         )}
-        {isAtLeast.lead ? (
-          <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Templates")}>
-            <View style={[styles.quickActionIcon, { backgroundColor: "#FF5722" + "20" }]}>
-              <Feather name="file-text" size={20} color="#FF5722" />
-            </View>
-            <ThemedText style={styles.quickActionText}>Templates</ThemedText>
-          </Pressable>
-        ) : null}
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Templates")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: "#FF5722" + "20" }]}>
+            <Feather name="file-text" size={20} color="#FF5722" />
+          </View>
+          <ThemedText style={styles.quickActionText}>Templates</ThemedText>
+        </Pressable>
       </View>
 
       <View style={styles.statsRow}>
