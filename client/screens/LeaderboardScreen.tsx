@@ -17,6 +17,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, LeaderboardEntry } from "@/lib/api";
+import { mockLeaderboard } from "@/lib/mockData";
 
 const periodOptions = [
   { label: "This Week", value: "week" },
@@ -31,6 +32,8 @@ export default function LeaderboardScreen() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<"week" | "month" | "all">("week");
 
+  const { isDemoMode } = useAuth();
+
   const {
     data: leaderboard,
     isLoading,
@@ -39,8 +42,11 @@ export default function LeaderboardScreen() {
   } = useQuery({
     queryKey: ["/api/gamification/leaderboard", period],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockLeaderboard;
+      }
       const response = await api.gamification.leaderboard(period);
-      return response.data || [];
+      return response.data || mockLeaderboard;
     },
   });
 

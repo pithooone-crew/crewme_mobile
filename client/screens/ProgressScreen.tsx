@@ -24,6 +24,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, Badge, SkillTree } from "@/lib/api";
+import { mockBadges, mockSkillTrees } from "@/lib/mockData";
 import { ProgressStackParamList } from "@/navigation/ProgressStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<ProgressStackParamList>;
@@ -46,25 +47,36 @@ export default function ProgressScreen() {
   const { user } = useAuth();
   const [selectedTrade, setSelectedTrade] = useState<string | null>(null);
 
+  const { isDemoMode } = useAuth();
+
   const { data: badges, isLoading: badgesLoading, refetch: refetchBadges } = useQuery({
     queryKey: ["/api/gamification/badges"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockBadges;
+      }
       const response = await api.gamification.badges();
-      return response.data || [];
+      return response.data || mockBadges;
     },
   });
 
   const { data: skillTrees, isLoading: skillsLoading, refetch: refetchSkills } = useQuery({
     queryKey: ["/api/skills/trees"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockSkillTrees;
+      }
       const response = await api.skills.trees();
-      return response.data || [];
+      return response.data || mockSkillTrees;
     },
   });
 
   const { data: xpData, refetch: refetchXp } = useQuery({
     queryKey: ["/api/gamification/xp"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return { xp: 2450, level: 5, nextLevelXp: 3000 };
+      }
       const response = await api.gamification.xp();
       return response.data || { xp: 0, level: 1, nextLevelXp: 1000 };
     },

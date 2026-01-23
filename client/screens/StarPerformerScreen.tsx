@@ -15,12 +15,15 @@ import { Card } from "@/components/Card";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
 import { api, StarPerformer } from "@/lib/api";
+import { mockStarPerformer } from "@/lib/mockData";
 
 export default function StarPerformerScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
+  const { isDemoMode } = useAuth();
 
   const {
     data: currentStar,
@@ -29,8 +32,11 @@ export default function StarPerformerScreen() {
   } = useQuery({
     queryKey: ["/api/star-performer/current"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockStarPerformer;
+      }
       const response = await api.starPerformer.current();
-      return response.data;
+      return response.data || mockStarPerformer;
     },
   });
 
@@ -41,6 +47,9 @@ export default function StarPerformerScreen() {
   } = useQuery({
     queryKey: ["/api/star-performer/history"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return [];
+      }
       const response = await api.starPerformer.history();
       return response.data || [];
     },

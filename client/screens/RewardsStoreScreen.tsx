@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -22,6 +23,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, Reward } from "@/lib/api";
+import { mockRewards } from "@/lib/mockData";
 
 export default function RewardsStoreScreen() {
   const insets = useSafeAreaInsets();
@@ -32,6 +34,8 @@ export default function RewardsStoreScreen() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  const { isDemoMode } = useAuth();
+
   const {
     data: rewards,
     isLoading,
@@ -40,25 +44,35 @@ export default function RewardsStoreScreen() {
   } = useQuery({
     queryKey: ["/api/rewards"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return mockRewards;
+      }
       const response = await api.rewards.list();
-      return response.data || [];
+      return response.data || mockRewards;
     },
   });
 
   const redeemMutation = useMutation({
     mutationFn: async (rewardId: string) => {
+      if (isDemoMode) {
+        return { success: true, message: "Redeemed in demo mode" };
+      }
       const response = await api.rewards.redeem(rewardId);
-      return response.data;
+      return response.data || { success: true };
     },
     onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       setShowConfirmModal(false);
       setSelectedReward(null);
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       refreshUser();
     },
     onError: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     },
   });
 
