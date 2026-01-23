@@ -5,13 +5,14 @@
 CrewMe is a React Native/Expo mobile application designed for construction workforce management with gamification features. The app empowers construction workers through achievement tracking, transforming daily work into visible skill progression with XP, badges, and skill trees.
 
 **Core Features:**
-- Time tracking with GPS-verified clock in/out
+- Time tracking with GPS-verified clock in/out (with project selection)
 - Task management with photo attachments
 - Gamification system (XP, levels, badges, leaderboards)
 - Skill trees for 6 construction trades
 - Crew management and scheduling
 - Push notifications
 - Rewards store for redeeming points
+- Messaging system with AI summaries, status tracking, and team communication
 
 ## User Preferences
 
