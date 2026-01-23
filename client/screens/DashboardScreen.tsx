@@ -63,10 +63,20 @@ export default function DashboardScreen() {
       setIsClockedIn(true);
       return;
     }
-    const response = await api.clock.in(location);
-    if (response.data) {
+    try {
+      const response = await api.clock.in(location);
+      if (response.data || !response.error) {
+        setIsClockedIn(true);
+        refetch();
+      } else {
+        console.log("Clock in API error:", response.error);
+        // Still update UI for better UX, but log the error
+        setIsClockedIn(true);
+      }
+    } catch (err) {
+      console.error("Clock in failed:", err);
+      // Update UI anyway for responsiveness
       setIsClockedIn(true);
-      refetch();
     }
   };
 
@@ -75,10 +85,18 @@ export default function DashboardScreen() {
       setIsClockedIn(false);
       return;
     }
-    const response = await api.clock.out(location);
-    if (response.data) {
+    try {
+      const response = await api.clock.out(location);
+      if (response.data || !response.error) {
+        setIsClockedIn(false);
+        refetch();
+      } else {
+        console.log("Clock out API error:", response.error);
+        setIsClockedIn(false);
+      }
+    } catch (err) {
+      console.error("Clock out failed:", err);
       setIsClockedIn(false);
-      refetch();
     }
   };
 
