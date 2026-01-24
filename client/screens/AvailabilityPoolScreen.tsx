@@ -17,7 +17,7 @@ import { Card } from "@/components/Card";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/query-client";
 
 interface AvailabilityEntry {
   id: string;
@@ -84,6 +84,7 @@ export default function AvailabilityPoolScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<string[]>(["Electrical"]);
   const [maxHours, setMaxHours] = useState(8);
+  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
 
   const { data: entries = mockAvailability, isLoading, refetch } = useQuery({
     queryKey: ["/api/availability"],
@@ -117,7 +118,7 @@ export default function AvailabilityPoolScreen() {
     mutationFn: async (entry: AvailabilityEntry) => {
       if (isDemoMode) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true, message: "Shift confirmed!" };
+        return { success: true, message: "Shift confirmed!", entryId: entry.id };
       }
       const response = await apiRequest("POST", `/api/availability/${entry.id}/confirm`, {
         projectName: entry.matchedProject,
@@ -127,7 +128,10 @@ export default function AvailabilityPoolScreen() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (isDemoMode) {
+        setConfirmedIds(prev => new Set([...prev, variables.id]));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/availability"] });
     },
   });
@@ -200,37 +204,51 @@ export default function AvailabilityPoolScreen() {
             <ThemedText type="h4" style={styles.sectionTitle}>
               <Feather name="check-circle" size={18} color={Colors.success} /> Matched Shifts
             </ThemedText>
-            {matchedEntries.map(entry => (
-              <Card key={entry.id} style={styles.matchedEntryCard}>
-                <View style={styles.entryHeader}>
-                  <ThemedText type="h4">{formatDate(entry.date)}</ThemedText>
-                  <View style={[styles.statusBadge, { backgroundColor: Colors.success + "20" }]}>
-                    <ThemedText style={[styles.statusText, { color: Colors.success }]}>Matched</ThemedText>
+            {matchedEntries.map(entry => {
+              const isConfirmed = confirmedIds.has(entry.id);
+              return (
+                <Card key={entry.id} style={styles.matchedEntryCard}>
+                  <View style={styles.entryHeader}>
+                    <ThemedText type="h4">{formatDate(entry.date)}</ThemedText>
+                    <View style={[styles.statusBadge, { backgroundColor: isConfirmed ? Colors.primary + "20" : Colors.success + "20" }]}>
+                      <ThemedText style={[styles.statusText, { color: isConfirmed ? Colors.primary : Colors.success }]}>
+                        {isConfirmed ? "Confirmed" : "Matched"}
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-                <ThemedText style={[styles.matchedProject, { color: Colors.primary }]}>
-                  {entry.matchedProject}
-                </ThemedText>
-                <View style={styles.entryDetails}>
-                  <View style={styles.detailItem}>
-                    <Feather name="clock" size={14} color={theme.textSecondary} />
-                    <ThemedText style={[styles.detailText, { color: theme.textSecondary }]}>
-                      {entry.startTime} - {entry.endTime}
-                    </ThemedText>
-                  </View>
-                </View>
-                <Pressable
-                  style={[styles.confirmButton, { backgroundColor: Colors.success }]}
-                  onPress={() => handleConfirmShift(entry)}
-                  disabled={confirmMutation.isPending}
-                >
-                  <Feather name="check" size={16} color="#fff" />
-                  <ThemedText style={styles.confirmButtonText}>
-                    {confirmMutation.isPending ? "Confirming..." : "Accept Assignment"}
+                  <ThemedText style={[styles.matchedProject, { color: Colors.primary }]}>
+                    {entry.matchedProject}
                   </ThemedText>
-                </Pressable>
-              </Card>
-            ))}
+                  <View style={styles.entryDetails}>
+                    <View style={styles.detailItem}>
+                      <Feather name="clock" size={14} color={theme.textSecondary} />
+                      <ThemedText style={[styles.detailText, { color: theme.textSecondary }]}>
+                        {entry.startTime} - {entry.endTime}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {isConfirmed ? (
+                    <View style={[styles.confirmedBanner, { backgroundColor: Colors.primary + "15" }]}>
+                      <Feather name="check-circle" size={16} color={Colors.primary} />
+                      <ThemedText style={[styles.confirmedText, { color: Colors.primary }]}>
+                        You've been added to the schedule
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <Pressable
+                      style={[styles.confirmButton, { backgroundColor: Colors.success }]}
+                      onPress={() => handleConfirmShift(entry)}
+                      disabled={confirmMutation.isPending}
+                    >
+                      <Feather name="check" size={16} color="#fff" />
+                      <ThemedText style={styles.confirmButtonText}>
+                        {confirmMutation.isPending ? "Confirming..." : "Accept Assignment"}
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </Card>
+              );
+            })}
           </View>
         ) : null}
 
@@ -447,6 +465,18 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: "#fff",
     fontWeight: "600",
+    fontSize: FontSizes.sm,
+  },
+  confirmedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
+  confirmedText: {
+    fontWeight: "500",
     fontSize: FontSizes.sm,
   },
   skillsRow: {

@@ -17,7 +17,7 @@ import { Card } from "@/components/Card";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { apiRequest, getApiUrl } from "@/lib/queryClient";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 interface ReplacementRequest {
   id: string;
@@ -110,6 +110,7 @@ export default function AINotificationsScreen() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [responseText, setResponseText] = useState<Record<string, string>>({});
+  const [localStatuses, setLocalStatuses] = useState<Record<string, "accepted" | "declined">>({});
 
   const { data: requests = mockRequests, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["/api/ai-notifications"],
@@ -121,7 +122,7 @@ export default function AINotificationsScreen() {
     mutationFn: async ({ id, request }: { id: string; request: ReplacementRequest }) => {
       if (isDemoMode) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true, message: "Work assignment accepted successfully." };
+        return { success: true, message: "Work assignment accepted successfully.", id };
       }
       const response = await apiRequest("POST", `/api/work-assignments/${id}/accept`, {
         assignmentType: request.type,
@@ -131,7 +132,10 @@ export default function AINotificationsScreen() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (isDemoMode) {
+        setLocalStatuses(prev => ({ ...prev, [variables.id]: "accepted" }));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
     },
   });
@@ -140,14 +144,17 @@ export default function AINotificationsScreen() {
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
       if (isDemoMode) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true, message: "Work assignment declined." };
+        return { success: true, message: "Work assignment declined.", id };
       }
       const response = await apiRequest("POST", `/api/work-assignments/${id}/decline`, {
         reason,
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (isDemoMode) {
+        setLocalStatuses(prev => ({ ...prev, [variables.id]: "declined" }));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
     },
   });
@@ -158,6 +165,10 @@ export default function AINotificationsScreen() {
 
   const handleDecline = (id: string) => {
     declineMutation.mutate({ id, reason: responseText[id] });
+  };
+
+  const getEffectiveStatus = (request: ReplacementRequest) => {
+    return localStatuses[request.id] || request.status;
   };
 
   const formatDate = (dateString: string) => {
@@ -198,7 +209,7 @@ export default function AINotificationsScreen() {
     }
   };
 
-  const pendingCount = requests.filter(r => r.status === "pending").length;
+  const pendingCount = requests.filter(r => getEffectiveStatus(r) === "pending").length;
 
   return (
     <ThemedView style={styles.container}>
@@ -229,7 +240,8 @@ export default function AINotificationsScreen() {
 
         {requests.map((request) => {
           const isExpanded = expandedId === request.id;
-          const isPending = request.status === "pending";
+          const effectiveStatus = getEffectiveStatus(request);
+          const isPending = effectiveStatus === "pending";
 
           return (
             <Card key={request.id} style={styles.requestCard}>
@@ -241,7 +253,7 @@ export default function AINotificationsScreen() {
                   <View style={styles.requestInfo}>
                     <View style={styles.titleRow}>
                       <ThemedText type="h4" style={styles.requestTitle}>{request.title}</ThemedText>
-                      {request.urgency === "urgent" ? (
+                      {request.urgency === "urgent" && isPending ? (
                         <View style={[styles.urgentBadge, { backgroundColor: Colors.error + "20" }]}>
                           <ThemedText style={[styles.urgentText, { color: Colors.error }]}>Urgent</ThemedText>
                         </View>
@@ -254,13 +266,13 @@ export default function AINotificationsScreen() {
                   {!isPending ? (
                     <View style={[
                       styles.statusBadge,
-                      { backgroundColor: request.status === "accepted" ? Colors.success + "20" : Colors.error + "20" }
+                      { backgroundColor: effectiveStatus === "accepted" ? Colors.success + "20" : Colors.error + "20" }
                     ]}>
                       <ThemedText style={[
                         styles.statusText,
-                        { color: request.status === "accepted" ? Colors.success : Colors.error }
+                        { color: effectiveStatus === "accepted" ? Colors.success : Colors.error }
                       ]}>
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        {effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}
                       </ThemedText>
                     </View>
                   ) : null}
