@@ -142,6 +142,19 @@ The Templates feature allows users to browse pre-built project templates and gen
 - lead/foreman/project_manager/admin: Apply templates to create projects
 - project_manager/admin: Generate new templates with AI
 
+### Work Assignment Accept/Decline
+Workers can accept or decline AI-generated work assignments, replacement requests, and shift swaps.
+
+**Components:**
+- `client/screens/AINotificationsScreen.tsx` - AI Notifications with accept/decline buttons
+
+**API Endpoints (matching MOBILE_SYNC_PROMPT.md):**
+- GET /api/mobile/assignments/pending - Get pending assignments with project details
+- POST /api/mobile/assignments/:messageId/respond - Accept or decline assignment
+  - Body: { accepted: boolean, responseContent?: string }
+  - Accepting auto-reassigns tasks and removes from availability pool
+  - Manager gets notified of response
+
 ### Open to Work Feature
 Workers can mark themselves as "Open to Work" to be visible to the AI scheduler for automatic task allocation.
 
@@ -154,12 +167,10 @@ Workers can mark themselves as "Open to Work" to be visible to the AI scheduler 
 - Shows confirmation banner when enabled
 - Sends skills and preferences along with status
 
-**API Endpoint:**
-- POST /api/profile/open-to-work - Updates open-to-work status and syncs with external web app
-
-**Synced Data:**
-- isOpenToWork (boolean)
-- skills (array)
-- maxHoursPerWeek
-- preferredProjectTypes
-- availableFrom
+**API Endpoints (matching MOBILE_SYNC_PROMPT.md):**
+- POST /api/mobile/open-to-work - Mark available for specific date
+  - Body: { availableDate, skills[], maxHours, preferredProjects[], notes }
+- POST /api/mobile/open-to-work/quick - Quick toggle for today/tomorrow/week
+  - Body: { days: ["today", "tomorrow"], maxHours }
+- GET /api/mobile/open-to-work - Get my availability
+- DELETE /api/mobile/open-to-work/:id - Remove availability
