@@ -196,7 +196,12 @@ export default function ProfileScreen() {
         </Card>
 
         <Card style={styles.openToWorkCard}>
-          <View style={styles.openToWorkHeader}>
+          <Pressable 
+            style={styles.openToWorkHeader}
+            onPress={() => handleOpenToWorkToggle(!isOpenToWork)}
+            testID="button-open-to-work-toggle"
+            disabled={openToWorkMutation.isPending}
+          >
             <View style={[styles.openToWorkIcon, { backgroundColor: isOpenToWork ? Colors.success + "20" : theme.backgroundRoot }]}>
               <Feather name="briefcase" size={24} color={isOpenToWork ? Colors.success : theme.textSecondary} />
             </View>
@@ -206,12 +211,7 @@ export default function ProfileScreen() {
                 {isOpenToWork ? "AI can assign you to new tasks" : "Not visible for AI task allocation"}
               </ThemedText>
             </View>
-            <Pressable 
-              style={styles.openToWorkToggle}
-              onPress={() => handleOpenToWorkToggle(!isOpenToWork)}
-              testID="button-open-to-work-toggle"
-              disabled={openToWorkMutation.isPending}
-            >
+            <View style={styles.openToWorkToggle}>
               {openToWorkMutation.isPending ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
@@ -228,8 +228,8 @@ export default function ProfileScreen() {
                   ]} />
                 </View>
               )}
-            </Pressable>
-          </View>
+            </View>
+          </Pressable>
           {isOpenToWork ? (
             <View style={[styles.openToWorkStatus, { backgroundColor: Colors.success + "15" }]}>
               <Feather name="check-circle" size={16} color={Colors.success} />
