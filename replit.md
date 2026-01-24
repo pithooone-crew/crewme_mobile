@@ -18,8 +18,9 @@ CrewMe is a React Native/Expo mobile application designed for construction workf
 - Project Templates with AI generation for quick project setup (40+ hour time savings)
 - Attendance tracking with timesheet history and estimated pay calculation
 - Digital Crew ID cards with QR code verification
-- AI Self-Healing notifications for automatic shift replacement requests
-- Availability Pool for workers to mark available dates and skills
+- AI Self-Healing notifications for automatic shift replacement requests with accept/decline functionality
+- Availability Pool for workers to mark available dates and skills with shift confirmation
+- Work assignment acceptance syncs with external Site Scheduler web app backend
 
 ## User Preferences
 
