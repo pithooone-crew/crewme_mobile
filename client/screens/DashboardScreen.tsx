@@ -338,6 +338,17 @@ export default function DashboardScreen() {
           </View>
           <ThemedText style={styles.quickActionText}>Templates</ThemedText>
         </Pressable>
+        <Pressable style={styles.quickAction} onPress={() => navigation.navigate("AINotifications")}>
+          <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + "20" }]}>
+            <Feather name="cpu" size={20} color={Colors.success} />
+          </View>
+          <View style={styles.badgeContainer}>
+            <View style={styles.notificationBadge}>
+              <ThemedText style={styles.notificationBadgeText}>2</ThemedText>
+            </View>
+          </View>
+          <ThemedText style={styles.quickActionText}>AI Alerts</ThemedText>
+        </Pressable>
         {isAtLeast.lead ? (
           <Pressable style={styles.quickAction} onPress={() => navigation.navigate("Crew")}>
             <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + "20" }]}>
@@ -389,6 +400,36 @@ export default function DashboardScreen() {
           </ThemedText>
         </Card>
       </View>
+
+      <Pressable onPress={() => navigation.navigate("Attendance")}>
+        <Card style={styles.weeklyHoursCard}>
+          <View style={styles.weeklyHoursHeader}>
+            <View style={styles.weeklyHoursIcon}>
+              <Feather name="calendar" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.weeklyHoursInfo}>
+              <ThemedText type="h4">Weekly Hours Summary</ThemedText>
+              <ThemedText style={[styles.weeklyHoursSubtext, { color: theme.textSecondary }]}>
+                {data.weeklyStats.hoursWorked}h worked this week
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </View>
+          <View style={styles.weeklyHoursProgress}>
+            <View style={[styles.weeklyHoursBar, { backgroundColor: theme.border }]}>
+              <View 
+                style={[
+                  styles.weeklyHoursFill, 
+                  { width: `${Math.min((data.weeklyStats.hoursWorked / 40) * 100, 100)}%` }
+                ]} 
+              />
+            </View>
+            <ThemedText style={[styles.weeklyHoursTarget, { color: theme.textSecondary }]}>
+              Target: 40h
+            </ThemedText>
+          </View>
+        </Card>
+      </Pressable>
 
       <Card style={styles.xpCard}>
         <View style={styles.xpHeader}>
@@ -593,5 +634,67 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  badgeContainer: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    zIndex: 1,
+  },
+  notificationBadge: {
+    backgroundColor: Colors.error,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notificationBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  weeklyHoursCard: {
+    marginBottom: Spacing.lg,
+  },
+  weeklyHoursHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  weeklyHoursIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  weeklyHoursInfo: {
+    flex: 1,
+  },
+  weeklyHoursSubtext: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  weeklyHoursProgress: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  weeklyHoursBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  weeklyHoursFill: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 4,
+  },
+  weeklyHoursTarget: {
+    fontSize: 12,
   },
 });
