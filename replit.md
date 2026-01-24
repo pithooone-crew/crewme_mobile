@@ -174,3 +174,18 @@ Workers can mark themselves as "Open to Work" to be visible to the AI scheduler 
   - Body: { days: ["today", "tomorrow"], maxHours }
 - GET /api/mobile/open-to-work - Get my availability
 - DELETE /api/mobile/open-to-work/:id - Remove availability
+
+### End-to-End Crew Pool Sync Flow
+
+The mobile app and web dashboard are fully synchronized for crew pool management:
+
+1. **Mobile crew marks "Open to Work"** → appears in web dashboard "Open to Work" tab
+2. **Manager triggers AI Self-Heal** for absent crew → AI searches the availability pool
+3. **AI sends replacement requests** to matched crew via mobile (appears in AI Notifications)
+4. **Crew accepts/declines via mobile** → status updates immediately in web AI Messages tab
+5. **Tasks auto-reassign** and managers see the confirmation with task count
+
+**Components Involved:**
+- `ProfileScreen.tsx` - Open to Work toggle (syncs to web)
+- `AvailabilityPoolScreen.tsx` - Date-specific availability (syncs to web)
+- `AINotificationsScreen.tsx` - Receives and responds to replacement requests
