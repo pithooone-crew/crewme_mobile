@@ -7,7 +7,6 @@ import {
   RefreshControl,
   Modal,
   Platform,
-  Switch,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -208,19 +207,29 @@ export default function ProfileScreen() {
                 {isOpenToWork ? "AI can assign you to new tasks" : "Not visible for AI task allocation"}
               </ThemedText>
             </View>
-            <View style={styles.openToWorkToggle}>
+            <Pressable 
+              style={styles.openToWorkToggle}
+              onPress={() => handleOpenToWorkToggle(!isOpenToWork)}
+              testID="button-open-to-work-toggle"
+              disabled={openToWorkMutation.isPending}
+            >
               {openToWorkMutation.isPending ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
-                <Switch
-                  value={isOpenToWork}
-                  onValueChange={handleOpenToWorkToggle}
-                  trackColor={{ false: theme.backgroundRoot, true: Colors.success + "50" }}
-                  thumbColor={isOpenToWork ? Colors.success : theme.textSecondary}
-                  testID="switch-open-to-work"
-                />
+                <View style={[
+                  styles.toggleTrack,
+                  { backgroundColor: isOpenToWork ? Colors.success + "50" : theme.backgroundRoot }
+                ]}>
+                  <View style={[
+                    styles.toggleThumb,
+                    { 
+                      backgroundColor: isOpenToWork ? Colors.success : theme.textSecondary,
+                      transform: [{ translateX: isOpenToWork ? 20 : 0 }]
+                    }
+                  ]} />
+                </View>
               )}
-            </View>
+            </Pressable>
           </View>
           {isOpenToWork ? (
             <View style={[styles.openToWorkStatus, { backgroundColor: Colors.success + "15" }]}>
@@ -531,5 +540,17 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.md,
+  },
+  toggleTrack: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
 });
