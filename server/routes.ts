@@ -114,143 +114,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Accept work assignment (replacement request, shift swap, overtime)
-  app.post("/api/work-assignments/:id/accept", async (req, res) => {
+  // Get pending assignments for mobile
+  app.get("/api/mobile/assignments/pending", async (req, res) => {
     try {
-      const { id } = req.params;
-      const { userId, assignmentType, projectId, projectName, date, duration, notes } = req.body;
+      // In production, fetch from database
+      // For demo, return mock data
+      res.json({
+        assignments: [],
+        count: 0,
+      });
+    } catch (error) {
+      console.error("Error getting pending assignments:", error);
+      res.status(500).json({ error: "Failed to get pending assignments" });
+    }
+  });
+
+  // Accept or decline work assignment
+  app.post("/api/mobile/assignments/:messageId/respond", async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const { accepted, responseContent } = req.body;
       
-      const acceptedAt = new Date().toISOString();
-      
-      // In production, this would:
-      // 1. Update assignment status in database
-      // 2. Notify the web app/scheduler about the acceptance
-      // 3. Update worker's schedule
-      // 4. Send notifications to relevant parties
+      const respondedAt = new Date().toISOString();
       
       // Sync with external web app (Site Scheduler)
       try {
-        const externalResponse = await fetch("https://site-scheduler--pithooone.replit.app/api/assignments/accept", {
+        const externalResponse = await fetch("https://site-scheduler--pithooone.replit.app/api/mobile/assignments/respond", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            assignmentId: id,
-            workerId: userId,
-            acceptedAt,
-            projectId,
-            projectName,
-            date,
-            duration,
+            messageId,
+            accepted,
+            responseContent,
+            respondedAt,
             source: "crewme-mobile",
           }),
         });
         
         if (!externalResponse.ok) {
-          console.log("External sync returned non-OK status, proceeding with local acceptance");
+          console.log("External sync returned non-OK status, proceeding with local response");
         }
       } catch (syncError) {
-        // Log but don't fail - the acceptance is still valid locally
         console.log("External sync failed, will retry later:", syncError);
       }
       
       res.json({
         success: true,
-        assignmentId: id,
-        status: "accepted",
-        acceptedAt,
-        message: "Work assignment accepted successfully. Your schedule has been updated.",
+        messageId,
+        status: accepted ? "accepted" : "declined",
+        respondedAt,
+        message: accepted 
+          ? "Work assignment accepted successfully. Your schedule has been updated."
+          : "Work assignment declined. The AI will find another available worker.",
       });
     } catch (error) {
-      console.error("Error accepting work assignment:", error);
-      res.status(500).json({ error: "Failed to accept work assignment" });
+      console.error("Error responding to work assignment:", error);
+      res.status(500).json({ error: "Failed to respond to work assignment" });
     }
   });
 
-  // Decline work assignment
-  app.post("/api/work-assignments/:id/decline", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { userId, reason, assignmentType } = req.body;
-      
-      const declinedAt = new Date().toISOString();
-      
-      // Sync with external web app
-      try {
-        await fetch("https://site-scheduler--pithooone.replit.app/api/assignments/decline", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            assignmentId: id,
-            workerId: userId,
-            declinedAt,
-            reason,
-            source: "crewme-mobile",
-          }),
-        });
-      } catch (syncError) {
-        console.log("External sync failed for decline:", syncError);
-      }
-      
-      res.json({
-        success: true,
-        assignmentId: id,
-        status: "declined",
-        declinedAt,
-        message: "Work assignment declined. The AI will find another available worker.",
-      });
-    } catch (error) {
-      console.error("Error declining work assignment:", error);
-      res.status(500).json({ error: "Failed to decline work assignment" });
-    }
-  });
-
-  // Update Open to Work status for AI task allocation
-  app.post("/api/profile/open-to-work", async (req, res) => {
+  // Mark available for specific date
+  app.post("/api/mobile/open-to-work", async (req, res) => {
     try {
       const { 
-        userId, 
-        isOpenToWork, 
+        availableDate,
         skills, 
-        maxHoursPerWeek, 
-        preferredProjectTypes,
-        availableFrom,
+        maxHours, 
+        preferredProjects,
         notes
       } = req.body;
       
-      const updatedAt = new Date().toISOString();
+      const createdAt = new Date().toISOString();
       
       // Sync with external web app for AI allocation
       try {
-        await fetch("https://site-scheduler--pithooone.replit.app/api/workers/open-to-work", {
+        await fetch("https://site-scheduler--pithooone.replit.app/api/mobile/open-to-work", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            workerId: userId,
-            isOpenToWork,
+            availableDate,
             skills,
-            maxHoursPerWeek,
-            preferredProjectTypes,
-            availableFrom,
+            maxHours,
+            preferredProjects,
             notes,
-            updatedAt,
+            createdAt,
             source: "crewme-mobile",
           }),
         });
       } catch (syncError) {
-        console.log("External sync failed for open-to-work status:", syncError);
+        console.log("External sync failed for open-to-work:", syncError);
       }
       
       res.json({
         success: true,
-        isOpenToWork,
-        updatedAt,
-        message: isOpenToWork 
-          ? "You're now visible to AI for task assignments!" 
-          : "Open to Work status disabled.",
+        availableDate,
+        createdAt,
+        message: "You're now visible to AI for task assignments on this date!",
       });
     } catch (error) {
-      console.error("Error updating open-to-work status:", error);
-      res.status(500).json({ error: "Failed to update open-to-work status" });
+      console.error("Error adding open-to-work availability:", error);
+      res.status(500).json({ error: "Failed to add availability" });
+    }
+  });
+
+  // Quick toggle for today/tomorrow/week
+  app.post("/api/mobile/open-to-work/quick", async (req, res) => {
+    try {
+      const { days, maxHours } = req.body;
+      
+      const createdAt = new Date().toISOString();
+      
+      // Sync with external web app
+      try {
+        await fetch("https://site-scheduler--pithooone.replit.app/api/mobile/open-to-work/quick", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            days,
+            maxHours,
+            createdAt,
+            source: "crewme-mobile",
+          }),
+        });
+      } catch (syncError) {
+        console.log("External sync failed for quick toggle:", syncError);
+      }
+      
+      res.json({
+        success: true,
+        days,
+        maxHours,
+        createdAt,
+        message: `Open to work for ${days.join(", ")}!`,
+      });
+    } catch (error) {
+      console.error("Error setting quick availability:", error);
+      res.status(500).json({ error: "Failed to set quick availability" });
+    }
+  });
+
+  // Get my availability
+  app.get("/api/mobile/open-to-work", async (req, res) => {
+    try {
+      // In production, fetch from database
+      res.json({
+        availability: [],
+        count: 0,
+      });
+    } catch (error) {
+      console.error("Error getting open-to-work status:", error);
+      res.status(500).json({ error: "Failed to get availability" });
+    }
+  });
+
+  // Remove availability
+  app.delete("/api/mobile/open-to-work/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Sync with external web app
+      try {
+        await fetch(`https://site-scheduler--pithooone.replit.app/api/mobile/open-to-work/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "crewme-mobile" }),
+        });
+      } catch (syncError) {
+        console.log("External sync failed for removing availability:", syncError);
+      }
+      
+      res.json({
+        success: true,
+        id,
+        message: "Availability removed.",
+      });
+    } catch (error) {
+      console.error("Error removing availability:", error);
+      res.status(500).json({ error: "Failed to remove availability" });
     }
   });
 

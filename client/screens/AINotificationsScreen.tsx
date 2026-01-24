@@ -110,7 +110,7 @@ export default function AINotificationsScreen() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [responseText, setResponseText] = useState<Record<string, string>>({});
-  const [localStatuses, setLocalStatuses] = useState<Record<string, "accepted" | "declined">>({});
+  const [localStatuses, setLocalStatuses] = useState<Record<string, "pending" | "accepted" | "declined">>({});
 
   const { data: requests = mockRequests, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["/api/ai-notifications"],
@@ -118,53 +118,37 @@ export default function AINotificationsScreen() {
     enabled: isDemoMode,
   });
 
-  const acceptMutation = useMutation({
-    mutationFn: async ({ id, request }: { id: string; request: ReplacementRequest }) => {
+  const respondMutation = useMutation({
+    mutationFn: async ({ id, accepted, responseContent }: { id: string; accepted: boolean; responseContent?: string }) => {
       if (isDemoMode) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true, message: "Work assignment accepted successfully.", id };
+        return { 
+          success: true, 
+          message: accepted ? "Work assignment accepted successfully." : "Work assignment declined.",
+          id,
+          status: accepted ? "accepted" : "declined"
+        };
       }
-      const response = await apiRequest("POST", `/api/work-assignments/${id}/accept`, {
-        assignmentType: request.type,
-        projectName: request.project,
-        date: request.date,
-        duration: request.duration,
+      const response = await apiRequest("POST", `/api/mobile/assignments/${id}/respond`, {
+        accepted,
+        responseContent,
       });
       return response.json();
     },
     onSuccess: (data, variables) => {
       if (isDemoMode) {
-        setLocalStatuses(prev => ({ ...prev, [variables.id]: "accepted" }));
+        setLocalStatuses(prev => ({ ...prev, [variables.id]: variables.accepted ? "accepted" : "declined" }));
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
-    },
-  });
-
-  const declineMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
-      if (isDemoMode) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true, message: "Work assignment declined.", id };
-      }
-      const response = await apiRequest("POST", `/api/work-assignments/${id}/decline`, {
-        reason,
-      });
-      return response.json();
-    },
-    onSuccess: (data, variables) => {
-      if (isDemoMode) {
-        setLocalStatuses(prev => ({ ...prev, [variables.id]: "declined" }));
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/assignments/pending"] });
     },
   });
 
   const handleAccept = (request: ReplacementRequest) => {
-    acceptMutation.mutate({ id: request.id, request });
+    respondMutation.mutate({ id: request.id, accepted: true });
   };
 
   const handleDecline = (id: string) => {
-    declineMutation.mutate({ id, reason: responseText[id] });
+    respondMutation.mutate({ id, accepted: false, responseContent: responseText[id] });
   };
 
   const getEffectiveStatus = (request: ReplacementRequest) => {
@@ -336,21 +320,21 @@ export default function AINotificationsScreen() {
                         <Pressable
                           style={[styles.declineButton, { borderColor: Colors.error }]}
                           onPress={() => handleDecline(request.id)}
-                          disabled={declineMutation.isPending || acceptMutation.isPending}
+                          disabled={respondMutation.isPending}
                         >
                           <Feather name="x" size={18} color={Colors.error} />
                           <ThemedText style={[styles.declineText, { color: Colors.error }]}>
-                            {declineMutation.isPending ? "Declining..." : "Decline"}
+                            Decline
                           </ThemedText>
                         </Pressable>
                         <Pressable
                           style={[styles.acceptButton, { backgroundColor: Colors.success }]}
                           onPress={() => handleAccept(request)}
-                          disabled={acceptMutation.isPending || declineMutation.isPending}
+                          disabled={respondMutation.isPending}
                         >
                           <Feather name="check" size={18} color="#fff" />
                           <ThemedText style={styles.acceptText}>
-                            {acceptMutation.isPending ? "Accepting..." : "Accept Assignment"}
+                            {respondMutation.isPending ? "Responding..." : "Accept Assignment"}
                           </ThemedText>
                         </Pressable>
                       </View>

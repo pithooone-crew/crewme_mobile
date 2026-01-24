@@ -79,18 +79,17 @@ export default function ProfileScreen() {
         await new Promise(resolve => setTimeout(resolve, 500));
         return { success: true, isOpenToWork: enabled };
       }
-      const response = await apiRequest("POST", "/api/profile/open-to-work", {
-        userId: user?.id,
-        isOpenToWork: enabled,
+      const response = await apiRequest("POST", "/api/mobile/open-to-work", {
+        availableDate: new Date().toISOString(),
         skills: profile?.skills || [],
-        maxHoursPerWeek: 40,
-        preferredProjectTypes: [],
-        availableFrom: new Date().toISOString(),
+        maxHours: 8,
+        preferredProjects: [],
+        notes: enabled ? "Available for AI task allocation" : "Not available",
       });
       return response.json();
     },
     onSuccess: (data) => {
-      setIsOpenToWork(data.isOpenToWork);
+      setIsOpenToWork(data.success);
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
