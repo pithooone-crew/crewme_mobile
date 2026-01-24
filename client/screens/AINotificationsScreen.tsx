@@ -113,9 +113,13 @@ export default function AINotificationsScreen() {
   const [localStatuses, setLocalStatuses] = useState<Record<string, "pending" | "accepted" | "declined">>({});
 
   const { data: requests = mockRequests, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["/api/ai-notifications"],
-    queryFn: async () => mockRequests,
-    enabled: isDemoMode,
+    queryKey: ["/api/mobile/assignments/pending"],
+    queryFn: async () => {
+      if (isDemoMode) return mockRequests;
+      const response = await fetch("/api/mobile/assignments/pending");
+      const data = await response.json();
+      return data.assignments || [];
+    },
   });
 
   const respondMutation = useMutation({

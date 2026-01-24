@@ -87,18 +87,32 @@ export default function AvailabilityPoolScreen() {
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
 
   const { data: entries = mockAvailability, isLoading, refetch } = useQuery({
-    queryKey: ["/api/availability"],
-    queryFn: async () => mockAvailability,
-    enabled: isDemoMode,
+    queryKey: ["/api/mobile/open-to-work"],
+    queryFn: async () => {
+      if (isDemoMode) return mockAvailability;
+      const response = await fetch("/api/mobile/open-to-work");
+      const data = await response.json();
+      return data.availability || [];
+    },
   });
 
   const addMutation = useMutation({
     mutationFn: async (data: Partial<AvailabilityEntry>) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { success: true };
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true };
+      }
+      const response = await apiRequest("POST", "/api/mobile/open-to-work", {
+        availableDate: data.date,
+        skills: data.skills,
+        maxHours: data.maxHours,
+        preferredProjects: [],
+        notes: `Available from ${data.startTime} to ${data.endTime}`,
+      });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/availability"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/open-to-work"] });
       setShowAddModal(false);
       setSelectedDate(null);
     },
@@ -106,11 +120,15 @@ export default function AvailabilityPoolScreen() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { success: true };
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        return { success: true };
+      }
+      const response = await apiRequest("DELETE", `/api/mobile/open-to-work/${id}`, {});
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/availability"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/open-to-work"] });
     },
   });
 
@@ -132,7 +150,7 @@ export default function AvailabilityPoolScreen() {
       if (isDemoMode) {
         setConfirmedIds(prev => new Set([...prev, variables.id]));
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/availability"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/open-to-work"] });
     },
   });
 
