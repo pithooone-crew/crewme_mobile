@@ -17,6 +17,7 @@ import { Card } from "@/components/Card";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { apiRequest } from "@/lib/queryClient";
 
 interface AvailabilityEntry {
   id: string;
@@ -112,6 +113,29 @@ export default function AvailabilityPoolScreen() {
     },
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: async (entry: AvailabilityEntry) => {
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true, message: "Shift confirmed!" };
+      }
+      const response = await apiRequest("POST", `/api/availability/${entry.id}/confirm`, {
+        projectName: entry.matchedProject,
+        date: entry.date,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/availability"] });
+    },
+  });
+
+  const handleConfirmShift = (entry: AvailabilityEntry) => {
+    confirmMutation.mutate(entry);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -195,6 +219,16 @@ export default function AvailabilityPoolScreen() {
                     </ThemedText>
                   </View>
                 </View>
+                <Pressable
+                  style={[styles.confirmButton, { backgroundColor: Colors.success }]}
+                  onPress={() => handleConfirmShift(entry)}
+                  disabled={confirmMutation.isPending}
+                >
+                  <Feather name="check" size={16} color="#fff" />
+                  <ThemedText style={styles.confirmButtonText}>
+                    {confirmMutation.isPending ? "Confirming..." : "Accept Assignment"}
+                  </ThemedText>
+                </Pressable>
               </Card>
             ))}
           </View>
@@ -399,6 +433,20 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   detailText: {
+    fontSize: FontSizes.sm,
+  },
+  confirmButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
+  confirmButtonText: {
+    color: "#fff",
+    fontWeight: "600",
     fontSize: FontSizes.sm,
   },
   skillsRow: {

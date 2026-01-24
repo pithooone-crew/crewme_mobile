@@ -17,6 +17,7 @@ import { Card } from "@/components/Card";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { apiRequest, getApiUrl } from "@/lib/queryClient";
 
 interface ReplacementRequest {
   id: string;
@@ -116,18 +117,47 @@ export default function AINotificationsScreen() {
     enabled: isDemoMode,
   });
 
-  const respondMutation = useMutation({
-    mutationFn: async ({ id, action, message }: { id: string; action: "accept" | "decline"; message?: string }) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { success: true };
+  const acceptMutation = useMutation({
+    mutationFn: async ({ id, request }: { id: string; request: ReplacementRequest }) => {
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true, message: "Work assignment accepted successfully." };
+      }
+      const response = await apiRequest("POST", `/api/work-assignments/${id}/accept`, {
+        assignmentType: request.type,
+        projectName: request.project,
+        date: request.date,
+        duration: request.duration,
+      });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
     },
   });
 
-  const handleResponse = (id: string, action: "accept" | "decline") => {
-    respondMutation.mutate({ id, action, message: responseText[id] });
+  const declineMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true, message: "Work assignment declined." };
+      }
+      const response = await apiRequest("POST", `/api/work-assignments/${id}/decline`, {
+        reason,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-notifications"] });
+    },
+  });
+
+  const handleAccept = (request: ReplacementRequest) => {
+    acceptMutation.mutate({ id: request.id, request });
+  };
+
+  const handleDecline = (id: string) => {
+    declineMutation.mutate({ id, reason: responseText[id] });
   };
 
   const formatDate = (dateString: string) => {
@@ -293,19 +323,23 @@ export default function AINotificationsScreen() {
                       <View style={styles.actionButtons}>
                         <Pressable
                           style={[styles.declineButton, { borderColor: Colors.error }]}
-                          onPress={() => handleResponse(request.id, "decline")}
-                          disabled={respondMutation.isPending}
+                          onPress={() => handleDecline(request.id)}
+                          disabled={declineMutation.isPending || acceptMutation.isPending}
                         >
                           <Feather name="x" size={18} color={Colors.error} />
-                          <ThemedText style={[styles.declineText, { color: Colors.error }]}>Decline</ThemedText>
+                          <ThemedText style={[styles.declineText, { color: Colors.error }]}>
+                            {declineMutation.isPending ? "Declining..." : "Decline"}
+                          </ThemedText>
                         </Pressable>
                         <Pressable
                           style={[styles.acceptButton, { backgroundColor: Colors.success }]}
-                          onPress={() => handleResponse(request.id, "accept")}
-                          disabled={respondMutation.isPending}
+                          onPress={() => handleAccept(request)}
+                          disabled={acceptMutation.isPending || declineMutation.isPending}
                         >
                           <Feather name="check" size={18} color="#fff" />
-                          <ThemedText style={styles.acceptText}>Accept</ThemedText>
+                          <ThemedText style={styles.acceptText}>
+                            {acceptMutation.isPending ? "Accepting..." : "Accept Assignment"}
+                          </ThemedText>
                         </Pressable>
                       </View>
                     </>
