@@ -141,3 +141,25 @@ The Templates feature allows users to browse pre-built project templates and gen
 - All users: View templates and details
 - lead/foreman/project_manager/admin: Apply templates to create projects
 - project_manager/admin: Generate new templates with AI
+
+### Open to Work Feature
+Workers can mark themselves as "Open to Work" to be visible to the AI scheduler for automatic task allocation.
+
+**Components:**
+- `client/screens/ProfileScreen.tsx` - Open to Work toggle card below Experience section
+
+**Features:**
+- Toggle switch to enable/disable visibility to AI scheduler
+- Syncs status with external Site Scheduler web app for AI allocation
+- Shows confirmation banner when enabled
+- Sends skills and preferences along with status
+
+**API Endpoint:**
+- POST /api/profile/open-to-work - Updates open-to-work status and syncs with external web app
+
+**Synced Data:**
+- isOpenToWork (boolean)
+- skills (array)
+- maxHoursPerWeek
+- preferredProjectTypes
+- availableFrom
