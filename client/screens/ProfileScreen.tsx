@@ -7,6 +7,8 @@ import {
   RefreshControl,
   Modal,
   Platform,
+  Switch,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -14,7 +16,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -26,6 +28,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { api, Certification } from "@/lib/api";
 import { mockProfile, mockCertifications } from "@/lib/mockData";
+import { apiRequest } from "@/lib/query-client";
 import { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
@@ -38,6 +41,7 @@ export default function ProfileScreen() {
   const { theme } = useTheme();
   const { user, logout, isDemoMode } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isOpenToWork, setIsOpenToWork] = useState(false);
 
   const {
     data: profile,
@@ -69,6 +73,34 @@ export default function ProfileScreen() {
     refetchProfile();
     refetchCerts();
   }, [refetchProfile, refetchCerts]);
+
+  const openToWorkMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (isDemoMode) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true, isOpenToWork: enabled };
+      }
+      const response = await apiRequest("POST", "/api/profile/open-to-work", {
+        userId: user?.id,
+        isOpenToWork: enabled,
+        skills: profile?.skills || [],
+        maxHoursPerWeek: 40,
+        preferredProjectTypes: [],
+        availableFrom: new Date().toISOString(),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsOpenToWork(data.isOpenToWork);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    },
+  });
+
+  const handleOpenToWorkToggle = (value: boolean) => {
+    openToWorkMutation.mutate(value);
+  };
 
   const handleRewardsPress = () => {
     navigation.navigate("RewardsStore");
@@ -163,6 +195,41 @@ export default function ProfileScreen() {
             nextLevelXP={1000}
             level={user?.level || 1}
           />
+        </Card>
+
+        <Card style={styles.openToWorkCard}>
+          <View style={styles.openToWorkHeader}>
+            <View style={[styles.openToWorkIcon, { backgroundColor: isOpenToWork ? Colors.success + "20" : theme.backgroundRoot }]}>
+              <Feather name="briefcase" size={24} color={isOpenToWork ? Colors.success : theme.textSecondary} />
+            </View>
+            <View style={styles.openToWorkInfo}>
+              <ThemedText type="h4">Open to Work</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+                {isOpenToWork ? "AI can assign you to new tasks" : "Not visible for AI task allocation"}
+              </ThemedText>
+            </View>
+            <View style={styles.openToWorkToggle}>
+              {openToWorkMutation.isPending ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Switch
+                  value={isOpenToWork}
+                  onValueChange={handleOpenToWorkToggle}
+                  trackColor={{ false: theme.backgroundRoot, true: Colors.success + "50" }}
+                  thumbColor={isOpenToWork ? Colors.success : theme.textSecondary}
+                  testID="switch-open-to-work"
+                />
+              )}
+            </View>
+          </View>
+          {isOpenToWork ? (
+            <View style={[styles.openToWorkStatus, { backgroundColor: Colors.success + "15" }]}>
+              <Feather name="check-circle" size={16} color={Colors.success} />
+              <ThemedText style={{ color: Colors.success, fontSize: 13, flex: 1, marginLeft: Spacing.sm }}>
+                Visible to AI scheduler. You'll receive task assignments based on your skills.
+              </ThemedText>
+            </View>
+          ) : null}
         </Card>
 
         {(profile?.skills || []).length > 0 ? (
@@ -304,7 +371,6 @@ export default function ProfileScreen() {
               <Button
                 onPress={handleLogoutConfirm}
                 style={[styles.modalButton, { backgroundColor: Colors.error }]}
-                testID="button-confirm-logout"
               >
                 Log Out
               </Button>
@@ -437,5 +503,33 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  openToWorkCard: {
+    marginBottom: Spacing.lg,
+  },
+  openToWorkHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  openToWorkIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  openToWorkInfo: {
+    flex: 1,
+  },
+  openToWorkToggle: {
+    marginLeft: Spacing.sm,
+  },
+  openToWorkStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
   },
 });

@@ -204,6 +204,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update Open to Work status for AI task allocation
+  app.post("/api/profile/open-to-work", async (req, res) => {
+    try {
+      const { 
+        userId, 
+        isOpenToWork, 
+        skills, 
+        maxHoursPerWeek, 
+        preferredProjectTypes,
+        availableFrom,
+        notes
+      } = req.body;
+      
+      const updatedAt = new Date().toISOString();
+      
+      // Sync with external web app for AI allocation
+      try {
+        await fetch("https://site-scheduler--pithooone.replit.app/api/workers/open-to-work", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workerId: userId,
+            isOpenToWork,
+            skills,
+            maxHoursPerWeek,
+            preferredProjectTypes,
+            availableFrom,
+            notes,
+            updatedAt,
+            source: "crewme-mobile",
+          }),
+        });
+      } catch (syncError) {
+        console.log("External sync failed for open-to-work status:", syncError);
+      }
+      
+      res.json({
+        success: true,
+        isOpenToWork,
+        updatedAt,
+        message: isOpenToWork 
+          ? "You're now visible to AI for task assignments!" 
+          : "Open to Work status disabled.",
+      });
+    } catch (error) {
+      console.error("Error updating open-to-work status:", error);
+      res.status(500).json({ error: "Failed to update open-to-work status" });
+    }
+  });
+
   // Accept matched availability shift
   app.post("/api/availability/:id/confirm", async (req, res) => {
     try {
