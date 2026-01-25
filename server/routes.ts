@@ -923,27 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/smart-equipment/:id - Single equipment details
-  app.get("/api/smart-equipment/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const equipment = smartEquipmentData.find(e => e.id === id);
-      
-      if (!equipment) {
-        return res.status(404).json({ error: "Equipment not found" });
-      }
-      
-      // Get alerts for this equipment
-      const alerts = equipmentAlerts.filter(a => a.equipmentId === id && !a.resolvedAt);
-      
-      res.json({ ...equipment, alerts });
-    } catch (error) {
-      console.error("Error getting equipment details:", error);
-      res.status(500).json({ error: "Failed to get equipment details" });
-    }
-  });
-
-  // GET /api/smart-equipment/fleet-health - Fleet health analytics
+  // GET /api/smart-equipment/fleet-health - Fleet health analytics (MUST be before :id route)
   app.get("/api/smart-equipment/fleet-health", async (req, res) => {
     try {
       const total = smartEquipmentData.length;
@@ -1102,6 +1082,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting AI dispatch recommendations:", error);
       res.status(500).json({ error: "Failed to get dispatch recommendations" });
+    }
+  });
+
+  // GET /api/smart-equipment/:id - Single equipment details (MUST be after specific routes)
+  app.get("/api/smart-equipment/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const equipment = smartEquipmentData.find(e => e.id === id);
+      
+      if (!equipment) {
+        return res.status(404).json({ error: "Equipment not found" });
+      }
+      
+      // Get alerts for this equipment
+      const alerts = equipmentAlerts.filter(a => a.equipmentId === id && !a.resolvedAt);
+      
+      res.json({ ...equipment, alerts });
+    } catch (error) {
+      console.error("Error getting equipment details:", error);
+      res.status(500).json({ error: "Failed to get equipment details" });
     }
   });
 

@@ -178,7 +178,7 @@ export default function FleetAlertsScreen() {
   const [severityFilter, setSeverityFilter] = useState<string | null>(null);
 
   const { data: alerts = [], isLoading, refetch, isRefetching } = useQuery<EquipmentAlert[]>({
-    queryKey: ["/api/smart-equipment/alerts", { active: "true" }],
+    queryKey: ["/api/smart-equipment/alerts?active=true"],
   });
 
   const acknowledgeMutation = useMutation({

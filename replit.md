@@ -44,6 +44,11 @@ Preferred communication style: Simple, everyday language.
 - **Work Assignment Acceptance:** Workers can accept/decline AI-generated assignments, replacement requests, and shift swaps, which syncs with an external Site Scheduler web app backend.
 - **Open to Work Feature:** Workers can mark themselves available for AI-driven task allocation, visible to the AI scheduler and synchronized with the external Site Scheduler web app.
 - **Map Dashboard:** Uber-like real-time GPS tracking of crew and equipment via WebSockets, with smooth animated markers, direction indicators, geofenced auto-attendance, and site zone visualization.
+- **Smart Equipment IoT Dashboard:** Real-time telemetry monitoring for construction equipment fleet with 4 screens:
+    - **Equipment List:** All equipment with health scores, status indicators, fuel levels, and category filtering.
+    - **Equipment Detail:** Live telemetry gauges (RPM, fuel level, coolant temp, oil pressure, battery, engine hours) and active alerts.
+    - **Fleet Alerts:** Active equipment alerts with severity levels (critical/high/medium/low), swipe-to-acknowledge/resolve gestures.
+    - **AI Dispatch:** AI-powered equipment recommendations with dispatch scores based on health (40%), fuel (30%), alerts (20%), and engine hours (10%).
 
 ### Key Design Patterns
 - **Path Aliases:** `@/` for client, `@shared/` for shared code.

@@ -93,7 +93,7 @@ export default function SmartEquipmentListScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: equipment = [], isLoading, refetch, isRefetching } = useQuery<SmartEquipment[]>({
-    queryKey: ["/api/smart-equipment", { search: searchQuery, category: selectedCategory }],
+    queryKey: ["/api/smart-equipment"],
   });
 
   const { data: fleetHealth } = useQuery({
