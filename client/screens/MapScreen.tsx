@@ -8,9 +8,10 @@ import {
   Platform,
   Alert,
   Linking,
+  ScrollView,
 } from "react-native";
-import MapView, { Marker, Circle, Polygon, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
+import { MapView, Marker, Circle, Polygon, PROVIDER_GOOGLE, isMapAvailable } from "@/components/MapViewWrapper";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -355,6 +356,86 @@ export default function MapScreen() {
     longitudeDelta: 0.1,
   };
 
+  if (!isMapAvailable) {
+    return (
+      <ScrollView 
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        contentContainerStyle={[styles.webContainer, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + 100 }]}
+      >
+        <View style={styles.webHeader}>
+          <Feather name="map" size={48} color={Colors.primary} />
+          <Text style={[styles.webTitle, { color: theme.text }]}>Map Dashboard</Text>
+          <Text style={[styles.webSubtitle, { color: theme.textSecondary }]}>
+            Run in Expo Go on your device to see the interactive map with crew locations and geofencing.
+          </Text>
+        </View>
+
+        <View style={[styles.webCard, { backgroundColor: theme.backgroundDefault }]}>
+          <Text style={[styles.webCardTitle, { color: theme.text }]}>Projects ({projects.length})</Text>
+          {projects.map((project) => (
+            <View key={project.id} style={styles.webListItem}>
+              <View style={[styles.statusDot, { backgroundColor: getProjectColor(project.status) }]} />
+              <View style={styles.webListContent}>
+                <Text style={[styles.webListName, { color: theme.text }]}>{project.name}</Text>
+                <Text style={[styles.webListDetail, { color: theme.textSecondary }]}>
+                  Status: {project.status} | Geofence: {project.geofenceRadius}m
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.webCard, { backgroundColor: theme.backgroundDefault }]}>
+          <Text style={[styles.webCardTitle, { color: theme.text }]}>Crew Locations ({crewLocations.length})</Text>
+          {crewLocations.length > 0 ? crewLocations.map((crew) => (
+            <View key={crew.id} style={styles.webListItem}>
+              <View style={[styles.statusDot, { backgroundColor: getStatusColor(crew.status) }]} />
+              <View style={styles.webListContent}>
+                <Text style={[styles.webListName, { color: theme.text }]}>{crew.userName || `Crew #${crew.userId}`}</Text>
+                <Text style={[styles.webListDetail, { color: theme.textSecondary }]}>
+                  Status: {crew.status} | Last update: {new Date(crew.lastUpdated).toLocaleTimeString()}
+                </Text>
+              </View>
+            </View>
+          )) : (
+            <Text style={[styles.webEmptyText, { color: theme.textSecondary }]}>No crew locations available</Text>
+          )}
+        </View>
+
+        <View style={[styles.webCard, { backgroundColor: theme.backgroundDefault }]}>
+          <Text style={[styles.webCardTitle, { color: theme.text }]}>Equipment ({equipmentLocations.length})</Text>
+          {equipmentLocations.map((equipment) => (
+            <View key={equipment.id} style={styles.webListItem}>
+              <View style={[styles.statusDot, { backgroundColor: getStatusColor(equipment.status) }]} />
+              <View style={styles.webListContent}>
+                <Text style={[styles.webListName, { color: theme.text }]}>{equipment.name}</Text>
+                <Text style={[styles.webListDetail, { color: theme.textSecondary }]}>
+                  {equipment.type} | Status: {equipment.status}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {weather ? (
+          <View style={[styles.webCard, { backgroundColor: theme.backgroundDefault }]}>
+            <Text style={[styles.webCardTitle, { color: theme.text }]}>Weather</Text>
+            <View style={styles.weatherRow}>
+              <Feather name="cloud" size={24} color={Colors.primary} />
+              <Text style={[styles.weatherTempLarge, { color: theme.text }]}>{weather.temperature}°F</Text>
+              <Text style={[styles.weatherConditionLarge, { color: theme.textSecondary }]}>{weather.condition}</Text>
+            </View>
+            {weather.aiRecommendation ? (
+              <Text style={[styles.weatherRecommendationLarge, { color: theme.textSecondary }]}>
+                {weather.aiRecommendation}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </ScrollView>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <MapView
@@ -691,5 +772,72 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  webContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.lg,
+  },
+  webHeader: {
+    alignItems: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  webTitle: {
+    ...Typography.h1,
+    textAlign: "center",
+  },
+  webSubtitle: {
+    ...Typography.body,
+    textAlign: "center",
+    maxWidth: 400,
+  },
+  webCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md,
+  },
+  webCardTitle: {
+    ...Typography.h3,
+    marginBottom: Spacing.sm,
+  },
+  webListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  webListContent: {
+    flex: 1,
+  },
+  webListName: {
+    ...Typography.body,
+    fontWeight: "600",
+  },
+  webListDetail: {
+    ...Typography.small,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  webEmptyText: {
+    ...Typography.body,
+    fontStyle: "italic",
+  },
+  weatherRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  weatherTempLarge: {
+    ...Typography.h2,
+  },
+  weatherConditionLarge: {
+    ...Typography.body,
+  },
+  weatherRecommendationLarge: {
+    ...Typography.small,
+    marginTop: Spacing.sm,
   },
 });

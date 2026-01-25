@@ -21,6 +21,7 @@ CrewMe is a React Native/Expo mobile application designed for construction workf
 - AI Self-Healing notifications for automatic shift replacement requests with accept/decline functionality
 - Availability Pool for workers to mark available dates and skills with shift confirmation
 - Work assignment acceptance syncs with external Site Scheduler web app backend
+- Map Dashboard with real-time crew/equipment GPS tracking and geofenced auto attendance
 
 ## User Preferences
 
@@ -48,7 +49,7 @@ Preferred communication style: Simple, everyday language.
 
 **Navigation Structure:**
 - Root Stack: Login → Main (Tab Navigator)
-- Tab Navigator: Home, Tasks, Progress, Profile
+- Tab Navigator: Home, Tasks, Map, Progress, Profile
 - Each tab has its own stack navigator for detail screens
 
 ### Backend Architecture
