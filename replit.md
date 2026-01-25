@@ -192,25 +192,30 @@ The mobile app and web dashboard are fully synchronized for crew pool management
 
 ### Internationalization (i18n)
 
-Multi-language support for web and mobile apps using i18next.
+Multi-language support for web and mobile apps using i18next with RTL support.
 
-**Supported Languages:**
-- English (en) - default
-- Spanish (es)
-- French (fr)
-- Chinese Simplified (zh)
-- Portuguese (pt)
+**Supported Languages (12 total):**
+- Western: English (en), Spanish (es), French (fr), German (de), Portuguese (pt)
+- Asian: Chinese (zh), Japanese (ja), Korean (ko), Thai (th), Vietnamese (vi), Hindi (hi)
+- Middle East: Arabic (ar) - with RTL layout support
 
 **Components:**
-- `client/lib/i18n/index.ts` - i18n configuration and initialization
-- `client/lib/i18n/locales/*.json` - Translation files for each language
+- `client/lib/i18n/index.ts` - i18n configuration with RTL support and device language detection
+- `client/lib/i18n/locales/*.json` - Translation files for all 12 languages
 - `client/screens/SettingsScreen.tsx` - Language selector in Appearance tab
 
 **Features:**
-- Language selection modal in Settings with native language names
+- Language selection modal in Settings with native language names and flags
+- Device language auto-detection using expo-localization
 - Persistent language preference stored in AsyncStorage
 - Auto-translate toggle for AI-powered message translation
+- RTL (right-to-left) layout support for Arabic using I18nManager
 - UI updates immediately when language changes
+
+**RTL Support:**
+- Arabic triggers I18nManager.forceRTL(true)
+- Layout automatically mirrors for RTL languages
+- isRTLLanguage() and isCurrentLanguageRTL() utility functions available
 
 **API Endpoints:**
 - POST /api/translate - Auto-translate text using OpenAI
