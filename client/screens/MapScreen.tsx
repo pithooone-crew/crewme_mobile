@@ -18,6 +18,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useLocationWebSocket } from "@/hooks/useLocationWebSocket";
+import { AnimatedMarkerContent } from "@/components/AnimatedMarker";
+import { useAuth } from "@/context/AuthContext";
 
 interface CrewLocation {
   id: number;
@@ -74,13 +77,14 @@ interface WeatherData {
 }
 
 const GEOFENCE_RADIUS = 100;
-const LOCATION_UPDATE_INTERVAL = 30000;
+const LOCATION_UPDATE_INTERVAL = 3000;
 
 export default function MapScreen() {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const mapRef = useRef<MapView>(null);
+  const { user } = useAuth();
   
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
@@ -89,10 +93,32 @@ export default function MapScreen() {
   const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
-  const { data: crewLocations = [], isLoading: loadingCrew } = useQuery<CrewLocation[]>({
+  const { 
+    isConnected: wsConnected, 
+    crewLocations: realtimeCrewLocations,
+    sendLocationUpdate,
+    lastGeofenceEvent,
+  } = useLocationWebSocket(user?.id);
+
+  const { data: apiCrewLocations = [], isLoading: loadingCrew } = useQuery<CrewLocation[]>({
     queryKey: ["/api/map/crew-locations"],
-    refetchInterval: 30000,
+    refetchInterval: wsConnected ? 60000 : 5000,
   });
+
+  const crewLocations = wsConnected && realtimeCrewLocations.length > 0 
+    ? realtimeCrewLocations.map((loc) => ({
+        id: loc.userId,
+        userId: loc.userId,
+        userName: loc.userName,
+        latitude: String(loc.latitude),
+        longitude: String(loc.longitude),
+        heading: loc.heading,
+        speed: loc.speed,
+        status: loc.status,
+        batteryLevel: loc.batteryLevel,
+        lastUpdated: new Date(loc.timestamp).toISOString(),
+      }))
+    : apiCrewLocations;
 
   const { data: equipmentLocations = [], isLoading: loadingEquipment } = useQuery<EquipmentLocation[]>({
     queryKey: ["/api/map/equipment-locations"],
@@ -156,14 +182,23 @@ export default function MapScreen() {
 
       locationSubscription.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced,
+          accuracy: Location.Accuracy.High,
           timeInterval: LOCATION_UPDATE_INTERVAL,
-          distanceInterval: 10,
+          distanceInterval: 5,
         },
         (location) => {
           setUserLocation(location);
           updateLocationMutation.mutate(location);
           checkGeofences(location);
+          
+          sendLocationUpdate({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            heading: location.coords.heading ?? undefined,
+            speed: location.coords.speed ?? undefined,
+            accuracy: location.coords.accuracy ?? undefined,
+            userName: user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : undefined,
+          });
         }
       );
     } catch (error) {
@@ -478,11 +513,16 @@ export default function MapScreen() {
               longitude: parseFloat(crew.longitude),
             }}
             title={crew.userName || `Crew #${crew.userId}`}
-            description={`Status: ${crew.status}${crew.batteryLevel ? ` | Battery: ${crew.batteryLevel}%` : ""}`}
+            description={`Status: ${crew.status}${crew.batteryLevel ? ` | Battery: ${crew.batteryLevel}%` : ""}${crew.speed ? ` | Speed: ${Math.round(crew.speed * 3.6)} km/h` : ""}`}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={true}
           >
-            <View style={[styles.crewMarker, { borderColor: getStatusColor(crew.status) }]}>
-              <Feather name="user" size={14} color={getStatusColor(crew.status)} />
-            </View>
+            <AnimatedMarkerContent
+              heading={crew.heading}
+              status={crew.status}
+              size={36}
+              showDirection={!!crew.heading && crew.status === "active"}
+            />
           </Marker>
         ))}
 
@@ -556,6 +596,11 @@ export default function MapScreen() {
           <Text style={styles.geofenceText}>On-site - Auto attendance active</Text>
         </View>
       )}
+
+      <View style={[styles.realtimeIndicator, { top: insets.top + 12, backgroundColor: wsConnected ? Colors.success : Colors.warning }]}>
+        <View style={[styles.realtimeDot, { backgroundColor: wsConnected ? "#fff" : "#fff" }]} />
+        <Text style={styles.realtimeText}>{wsConnected ? "Live" : "Polling"}</Text>
+      </View>
 
       <View style={[styles.actionButtons, { bottom: insets.bottom + 100 }]}>
         <Pressable
@@ -833,5 +878,30 @@ const styles = StyleSheet.create({
   weatherRecommendationLarge: {
     ...Typography.small,
     marginTop: Spacing.sm,
+  },
+  realtimeIndicator: {
+    position: "absolute",
+    right: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  realtimeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  realtimeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
   },
 });
