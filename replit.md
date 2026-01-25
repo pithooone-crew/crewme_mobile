@@ -221,6 +221,10 @@ Multi-language support for web and mobile apps using i18next with RTL support.
 - POST /api/translate - Auto-translate text using OpenAI
   - Body: { text, targetLanguage, sourceLanguage? }
   - Returns: { original, translated, sourceLanguage, targetLanguage }
+- POST /api/translate-message - Auto-detect source language and translate for recipient
+  - Body: { message, recipientLanguage }
+  - Returns: { original, translated, sourceLanguage, targetLanguage, wasTranslated }
+  - Use case: Mobile user sends in Arabic → Web app receives in English
 - POST /api/user/language - Update user language preference
   - Body: { language, autoTranslate }
 
