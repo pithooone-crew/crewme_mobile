@@ -300,50 +300,6 @@ export default function MapScreen() {
     }
   };
 
-  if (locationPermission === null) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
-  if (locationPermission !== "granted") {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
-        <Feather name="map-pin" size={64} color={Colors.primary} />
-        <Text style={[styles.permissionTitle, { color: theme.text }]}>Location Access Required</Text>
-        <Text style={[styles.permissionText, { color: theme.textSecondary }]}>
-          Enable location access to see crew locations, track your position, and enable automatic attendance.
-        </Text>
-        {locationPermission === "denied" ? (
-          Platform.OS !== "web" ? (
-            <Pressable
-              style={styles.permissionButton}
-              onPress={async () => {
-                try {
-                  await Linking.openSettings();
-                } catch (error) {
-                  console.error("Could not open settings");
-                }
-              }}
-            >
-              <Text style={styles.permissionButtonText}>Open Settings</Text>
-            </Pressable>
-          ) : (
-            <Text style={[styles.permissionText, { color: theme.textSecondary }]}>
-              Please enable location in your browser settings.
-            </Text>
-          )
-        ) : (
-          <Pressable style={styles.permissionButton} onPress={requestLocationPermission}>
-            <Text style={styles.permissionButtonText}>Enable Location</Text>
-          </Pressable>
-        )}
-      </View>
-    );
-  }
-
   const initialRegion = userLocation ? {
     latitude: userLocation.coords.latitude,
     longitude: userLocation.coords.longitude,
@@ -433,6 +389,44 @@ export default function MapScreen() {
           </View>
         ) : null}
       </ScrollView>
+    );
+  }
+
+  if (locationPermission === null) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (locationPermission !== "granted") {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
+        <Feather name="map-pin" size={64} color={Colors.primary} />
+        <Text style={[styles.permissionTitle, { color: theme.text }]}>Location Access Required</Text>
+        <Text style={[styles.permissionText, { color: theme.textSecondary }]}>
+          Enable location access to see crew locations, track your position, and enable automatic attendance.
+        </Text>
+        {locationPermission === "denied" ? (
+          <Pressable
+            style={styles.permissionButton}
+            onPress={async () => {
+              try {
+                await Linking.openSettings();
+              } catch (error) {
+                console.error("Could not open settings");
+              }
+            }}
+          >
+            <Text style={styles.permissionButtonText}>Open Settings</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.permissionButton} onPress={requestLocationPermission}>
+            <Text style={styles.permissionButtonText}>Enable Location</Text>
+          </Pressable>
+        )}
+      </View>
     );
   }
 
