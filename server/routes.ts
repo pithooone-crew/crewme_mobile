@@ -94,6 +94,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Language code to name mapping for all 12 supported languages
+  const languageNames: Record<string, string> = {
+    en: "English",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    pt: "Portuguese",
+    zh: "Chinese (Simplified)",
+    ja: "Japanese",
+    ko: "Korean",
+    th: "Thai",
+    vi: "Vietnamese",
+    hi: "Hindi",
+    ar: "Arabic",
+  };
+
   // Auto-translate message endpoint
   app.post("/api/translate", async (req, res) => {
     try {
@@ -102,14 +118,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!text || !targetLanguage) {
         return res.status(400).json({ error: "Text and target language are required" });
       }
-
-      const languageNames: Record<string, string> = {
-        en: "English",
-        es: "Spanish",
-        fr: "French",
-        zh: "Chinese (Simplified)",
-        pt: "Portuguese",
-      };
 
       const targetLangName = languageNames[targetLanguage] || targetLanguage;
       const sourceLangName = sourceLanguage ? languageNames[sourceLanguage] || sourceLanguage : "auto-detected";
@@ -140,6 +148,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error translating text:", error);
       res.status(500).json({ error: "Failed to translate text" });
+    }
+  });
+
+  // Translate message for recipient - auto-detects source language and translates to target
+  app.post("/api/translate-message", async (req, res) => {
+    try {
+      const { message, recipientLanguage } = req.body;
+
+      if (!message || !recipientLanguage) {
+        return res.status(400).json({ error: "Message and recipient language are required" });
+      }
+
+      const targetLangName = languageNames[recipientLanguage] || recipientLanguage;
+
+      // First, detect the source language
+      const detectResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Detect the language of the following text. Only respond with the language code (en, es, fr, de, pt, zh, ja, ko, th, vi, hi, ar). Nothing else.`,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+        max_tokens: 10,
+      });
+
+      const detectedLanguage = detectResponse.choices[0]?.message?.content?.trim().toLowerCase() || "en";
+
+      // If same language, no need to translate
+      if (detectedLanguage === recipientLanguage) {
+        return res.json({
+          original: message,
+          translated: message,
+          sourceLanguage: languageNames[detectedLanguage] || detectedLanguage,
+          targetLanguage: targetLangName,
+          wasTranslated: false,
+        });
+      }
+
+      // Translate to recipient's language
+      const translateResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate the following text to ${targetLangName}. Only output the translation, nothing else. Maintain the original formatting and tone.`,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+        max_tokens: 1000,
+      });
+
+      const translatedText = translateResponse.choices[0]?.message?.content || message;
+
+      res.json({
+        original: message,
+        translated: translatedText.trim(),
+        sourceLanguage: languageNames[detectedLanguage] || detectedLanguage,
+        targetLanguage: targetLangName,
+        wasTranslated: true,
+      });
+    } catch (error) {
+      console.error("Error translating message:", error);
+      res.status(500).json({ error: "Failed to translate message" });
     }
   });
 
