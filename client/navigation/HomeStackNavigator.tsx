@@ -17,6 +17,10 @@ import AttendanceScreen from "@/screens/AttendanceScreen";
 import CrewIDCardScreen from "@/screens/CrewIDCardScreen";
 import AINotificationsScreen from "@/screens/AINotificationsScreen";
 import AvailabilityPoolScreen from "@/screens/AvailabilityPoolScreen";
+import SmartEquipmentListScreen from "@/screens/SmartEquipmentListScreen";
+import EquipmentDetailScreen from "@/screens/EquipmentDetailScreen";
+import FleetAlertsScreen from "@/screens/FleetAlertsScreen";
+import AIDispatchScreen from "@/screens/AIDispatchScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -38,6 +42,10 @@ export type HomeStackParamList = {
   CrewIDCard: undefined;
   AINotifications: undefined;
   AvailabilityPool: undefined;
+  SmartEquipment: undefined;
+  EquipmentDetail: { equipmentId: number };
+  FleetAlerts: undefined;
+  AIDispatch: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -164,6 +172,34 @@ export default function HomeStackNavigator() {
         component={AvailabilityPoolScreen}
         options={{
           headerTitle: "Availability Pool",
+        }}
+      />
+      <Stack.Screen
+        name="SmartEquipment"
+        component={SmartEquipmentListScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="EquipmentDetail"
+        component={EquipmentDetailScreen}
+        options={{
+          headerTitle: "Equipment Details",
+        }}
+      />
+      <Stack.Screen
+        name="FleetAlerts"
+        component={FleetAlertsScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="AIDispatch"
+        component={AIDispatchScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

@@ -56,6 +56,17 @@ const featureGroups: FeatureGroup[] = [
     ],
   },
   {
+    id: "smart-equipment",
+    name: "Smart Equipment",
+    icon: "cpu",
+    color: "#0288D1",
+    items: [
+      { id: "equipment-dashboard", name: "Equipment Dashboard", icon: "monitor", screen: "SmartEquipment", color: "#0288D1" },
+      { id: "fleet-alerts", name: "Fleet Alerts", icon: "bell", screen: "FleetAlerts", color: Colors.error },
+      { id: "ai-dispatch", name: "AI Dispatch", icon: "cpu", screen: "AIDispatch", color: "#00BFA5" },
+    ],
+  },
+  {
     id: "ai-planning",
     name: "AI Planning",
     icon: "calendar",
