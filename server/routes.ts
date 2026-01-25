@@ -795,6 +795,316 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // SMART EQUIPMENT IOT ENDPOINTS
+  // ============================================
+
+  interface SmartEquipment {
+    id: number;
+    name: string;
+    category: string;
+    model: string;
+    serialNumber: string;
+    healthScore: number;
+    status: "running" | "idle" | "maintenance" | "offline";
+    telemetry: {
+      rpm: number;
+      fuelLevel: number;
+      coolantTemp: number;
+      oilPressure: number;
+      batteryVoltage: number;
+      engineHours: number;
+      lastUpdated: string;
+    };
+    location: {
+      latitude: number;
+      longitude: number;
+      projectId?: number;
+      projectName?: string;
+    };
+    activeAlertCount: number;
+  }
+
+  interface EquipmentAlert {
+    id: number;
+    equipmentId: number;
+    equipmentName: string;
+    alertType: "fuel_low" | "temp_high" | "oil_pressure" | "battery_low" | "maintenance_due" | "engine_fault";
+    severity: "critical" | "high" | "medium" | "low";
+    message: string;
+    timestamp: string;
+    acknowledged: boolean;
+    resolvedAt?: string;
+  }
+
+  // Mock smart equipment data
+  const smartEquipmentData: SmartEquipment[] = [
+    {
+      id: 1, name: "Excavator CAT-01", category: "excavator", model: "CAT 320", serialNumber: "CAT320-2024-001",
+      healthScore: 92, status: "running",
+      telemetry: { rpm: 1800, fuelLevel: 75, coolantTemp: 185, oilPressure: 45, batteryVoltage: 12.6, engineHours: 4520, lastUpdated: new Date().toISOString() },
+      location: { latitude: 40.7128, longitude: -74.006, projectId: 1, projectName: "Downtown Office Tower" },
+      activeAlertCount: 0
+    },
+    {
+      id: 2, name: "Bulldozer BD-03", category: "bulldozer", model: "Komatsu D65", serialNumber: "KOM-D65-2023-012",
+      healthScore: 78, status: "running",
+      telemetry: { rpm: 1650, fuelLevel: 42, coolantTemp: 195, oilPressure: 38, batteryVoltage: 12.2, engineHours: 6890, lastUpdated: new Date().toISOString() },
+      location: { latitude: 40.7135, longitude: -74.0055, projectId: 1, projectName: "Downtown Office Tower" },
+      activeAlertCount: 2
+    },
+    {
+      id: 3, name: "Crane Tower-07", category: "crane", model: "Liebherr 280EC-H", serialNumber: "LH-280-2022-007",
+      healthScore: 95, status: "idle",
+      telemetry: { rpm: 0, fuelLevel: 88, coolantTemp: 75, oilPressure: 0, batteryVoltage: 12.8, engineHours: 2150, lastUpdated: new Date().toISOString() },
+      location: { latitude: 40.7142, longitude: -74.0048, projectId: 2, projectName: "Harbor Bridge Renovation" },
+      activeAlertCount: 0
+    },
+    {
+      id: 4, name: "Loader WH-05", category: "wheel_loader", model: "Volvo L120", serialNumber: "VOL-L120-2023-005",
+      healthScore: 45, status: "maintenance",
+      telemetry: { rpm: 0, fuelLevel: 60, coolantTemp: 68, oilPressure: 0, batteryVoltage: 11.8, engineHours: 8750, lastUpdated: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+      location: { latitude: 40.7120, longitude: -74.007, projectId: 1, projectName: "Downtown Office Tower" },
+      activeAlertCount: 3
+    },
+    {
+      id: 5, name: "Dump Truck DT-12", category: "dump_truck", model: "CAT 777G", serialNumber: "CAT777-2024-012",
+      healthScore: 88, status: "running",
+      telemetry: { rpm: 1950, fuelLevel: 55, coolantTemp: 190, oilPressure: 42, batteryVoltage: 12.4, engineHours: 3200, lastUpdated: new Date().toISOString() },
+      location: { latitude: 40.7115, longitude: -74.008, projectId: 3, projectName: "Residential Complex" },
+      activeAlertCount: 1
+    },
+    {
+      id: 6, name: "Concrete Mixer CM-02", category: "mixer", model: "McNeilus Bridgemaster", serialNumber: "MCN-BM-2023-002",
+      healthScore: 22, status: "offline",
+      telemetry: { rpm: 0, fuelLevel: 15, coolantTemp: 45, oilPressure: 0, batteryVoltage: 10.2, engineHours: 12500, lastUpdated: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+      location: { latitude: 40.711, longitude: -74.009 },
+      activeAlertCount: 5
+    }
+  ];
+
+  // Mock alerts data
+  const equipmentAlerts: EquipmentAlert[] = [
+    { id: 1, equipmentId: 2, equipmentName: "Bulldozer BD-03", alertType: "fuel_low", severity: "medium", message: "Fuel level below 45%", timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 2, equipmentId: 2, equipmentName: "Bulldozer BD-03", alertType: "temp_high", severity: "high", message: "Coolant temperature approaching critical level", timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 3, equipmentId: 4, equipmentName: "Loader WH-05", alertType: "maintenance_due", severity: "critical", message: "Scheduled maintenance overdue by 150 hours", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), acknowledged: true },
+    { id: 4, equipmentId: 4, equipmentName: "Loader WH-05", alertType: "oil_pressure", severity: "high", message: "Oil pressure sensor reading abnormal values", timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 5, equipmentId: 4, equipmentName: "Loader WH-05", alertType: "battery_low", severity: "medium", message: "Battery voltage below optimal range", timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 6, equipmentId: 5, equipmentName: "Dump Truck DT-12", alertType: "fuel_low", severity: "medium", message: "Fuel level at 55% - consider refueling", timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 7, equipmentId: 6, equipmentName: "Concrete Mixer CM-02", alertType: "engine_fault", severity: "critical", message: "Engine fault code detected - immediate attention required", timestamp: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 8, equipmentId: 6, equipmentName: "Concrete Mixer CM-02", alertType: "battery_low", severity: "critical", message: "Battery voltage critically low - 10.2V", timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 9, equipmentId: 6, equipmentName: "Concrete Mixer CM-02", alertType: "fuel_low", severity: "high", message: "Fuel level critically low at 15%", timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), acknowledged: false },
+    { id: 10, equipmentId: 6, equipmentName: "Concrete Mixer CM-02", alertType: "maintenance_due", severity: "high", message: "Major service required at 12500 engine hours", timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), acknowledged: true },
+    { id: 11, equipmentId: 6, equipmentName: "Concrete Mixer CM-02", alertType: "temp_high", severity: "medium", message: "Coolant temperature fluctuating", timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), acknowledged: true }
+  ];
+
+  // GET /api/smart-equipment - Equipment list with telemetry
+  app.get("/api/smart-equipment", async (req, res) => {
+    try {
+      const { category, search } = req.query;
+      let filtered = [...smartEquipmentData];
+      
+      if (category && typeof category === "string") {
+        filtered = filtered.filter(e => e.category === category);
+      }
+      if (search && typeof search === "string") {
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter(e => 
+          e.name.toLowerCase().includes(searchLower) || 
+          e.category.toLowerCase().includes(searchLower) ||
+          e.model.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error("Error getting smart equipment:", error);
+      res.status(500).json({ error: "Failed to get equipment data" });
+    }
+  });
+
+  // GET /api/smart-equipment/:id - Single equipment details
+  app.get("/api/smart-equipment/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const equipment = smartEquipmentData.find(e => e.id === id);
+      
+      if (!equipment) {
+        return res.status(404).json({ error: "Equipment not found" });
+      }
+      
+      // Get alerts for this equipment
+      const alerts = equipmentAlerts.filter(a => a.equipmentId === id && !a.resolvedAt);
+      
+      res.json({ ...equipment, alerts });
+    } catch (error) {
+      console.error("Error getting equipment details:", error);
+      res.status(500).json({ error: "Failed to get equipment details" });
+    }
+  });
+
+  // GET /api/smart-equipment/fleet-health - Fleet health analytics
+  app.get("/api/smart-equipment/fleet-health", async (req, res) => {
+    try {
+      const total = smartEquipmentData.length;
+      const running = smartEquipmentData.filter(e => e.status === "running").length;
+      const idle = smartEquipmentData.filter(e => e.status === "idle").length;
+      const maintenance = smartEquipmentData.filter(e => e.status === "maintenance").length;
+      const offline = smartEquipmentData.filter(e => e.status === "offline").length;
+      
+      const avgHealthScore = Math.round(smartEquipmentData.reduce((sum, e) => sum + e.healthScore, 0) / total);
+      const avgFuelLevel = Math.round(smartEquipmentData.reduce((sum, e) => sum + e.telemetry.fuelLevel, 0) / total);
+      const totalEngineHours = smartEquipmentData.reduce((sum, e) => sum + e.telemetry.engineHours, 0);
+      const activeAlerts = equipmentAlerts.filter(a => !a.resolvedAt).length;
+      const criticalAlerts = equipmentAlerts.filter(a => !a.resolvedAt && a.severity === "critical").length;
+      
+      res.json({
+        total,
+        running,
+        idle,
+        maintenance,
+        offline,
+        avgHealthScore,
+        avgFuelLevel,
+        totalEngineHours,
+        activeAlerts,
+        criticalAlerts,
+        healthDistribution: {
+          excellent: smartEquipmentData.filter(e => e.healthScore >= 90).length,
+          good: smartEquipmentData.filter(e => e.healthScore >= 70 && e.healthScore < 90).length,
+          fair: smartEquipmentData.filter(e => e.healthScore >= 50 && e.healthScore < 70).length,
+          poor: smartEquipmentData.filter(e => e.healthScore >= 30 && e.healthScore < 50).length,
+          critical: smartEquipmentData.filter(e => e.healthScore < 30).length
+        }
+      });
+    } catch (error) {
+      console.error("Error getting fleet health:", error);
+      res.status(500).json({ error: "Failed to get fleet health data" });
+    }
+  });
+
+  // GET /api/smart-equipment/alerts - Equipment alerts
+  app.get("/api/smart-equipment/alerts", async (req, res) => {
+    try {
+      const { active, severity, type, equipmentId } = req.query;
+      let filtered = [...equipmentAlerts];
+      
+      if (active === "true") {
+        filtered = filtered.filter(a => !a.resolvedAt);
+      }
+      if (severity && typeof severity === "string") {
+        filtered = filtered.filter(a => a.severity === severity);
+      }
+      if (type && typeof type === "string") {
+        filtered = filtered.filter(a => a.alertType === type);
+      }
+      if (equipmentId && typeof equipmentId === "string") {
+        filtered = filtered.filter(a => a.equipmentId === parseInt(equipmentId));
+      }
+      
+      // Sort by severity (critical first) then by timestamp (newest first)
+      const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      filtered.sort((a, b) => {
+        const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+        if (severityDiff !== 0) return severityDiff;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error("Error getting equipment alerts:", error);
+      res.status(500).json({ error: "Failed to get alerts" });
+    }
+  });
+
+  // PATCH /api/smart-equipment/alerts/:id - Acknowledge or resolve alert
+  app.patch("/api/smart-equipment/alerts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { action } = req.body; // "acknowledge" or "resolve"
+      
+      const alert = equipmentAlerts.find(a => a.id === id);
+      if (!alert) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+      
+      if (action === "acknowledge") {
+        alert.acknowledged = true;
+      } else if (action === "resolve") {
+        alert.resolvedAt = new Date().toISOString();
+        // Update equipment alert count
+        const equipment = smartEquipmentData.find(e => e.id === alert.equipmentId);
+        if (equipment && equipment.activeAlertCount > 0) {
+          equipment.activeAlertCount--;
+        }
+      }
+      
+      res.json(alert);
+    } catch (error) {
+      console.error("Error updating alert:", error);
+      res.status(500).json({ error: "Failed to update alert" });
+    }
+  });
+
+  // GET /api/smart-equipment/ai-dispatch - AI dispatch recommendations
+  app.get("/api/smart-equipment/ai-dispatch", async (req, res) => {
+    try {
+      // AI-powered dispatch recommendations based on equipment health, fuel, and location
+      const availableEquipment = smartEquipmentData.filter(e => 
+        e.status !== "offline" && e.status !== "maintenance" && e.healthScore >= 50
+      );
+      
+      const recommendations = availableEquipment.map(equipment => {
+        // Calculate dispatch score based on multiple factors
+        const healthWeight = 0.4;
+        const fuelWeight = 0.3;
+        const alertWeight = 0.2;
+        const hoursWeight = 0.1;
+        
+        const healthScore = equipment.healthScore;
+        const fuelScore = equipment.telemetry.fuelLevel;
+        const alertScore = Math.max(0, 100 - (equipment.activeAlertCount * 25));
+        const hoursScore = Math.max(0, 100 - (equipment.telemetry.engineHours / 150));
+        
+        const dispatchScore = Math.round(
+          healthScore * healthWeight +
+          fuelScore * fuelWeight +
+          alertScore * alertWeight +
+          hoursScore * hoursWeight
+        );
+        
+        const reasons: string[] = [];
+        if (healthScore >= 90) reasons.push("Excellent equipment health");
+        else if (healthScore >= 70) reasons.push("Good equipment condition");
+        if (fuelScore >= 70) reasons.push("Adequate fuel reserves");
+        else if (fuelScore >= 40) reasons.push("Fuel available but refuel soon");
+        if (equipment.activeAlertCount === 0) reasons.push("No active alerts");
+        if (equipment.telemetry.engineHours < 5000) reasons.push("Low engine hours");
+        if (equipment.status === "idle") reasons.push("Currently idle and ready");
+        
+        return {
+          equipment,
+          dispatchScore,
+          healthPercent: healthScore,
+          fuelPercent: fuelScore,
+          reasons,
+          isTopPick: false
+        };
+      });
+      
+      // Sort by dispatch score and mark top pick
+      recommendations.sort((a, b) => b.dispatchScore - a.dispatchScore);
+      if (recommendations.length > 0) {
+        recommendations[0].isTopPick = true;
+      }
+      
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error getting AI dispatch recommendations:", error);
+      res.status(500).json({ error: "Failed to get dispatch recommendations" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
