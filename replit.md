@@ -189,3 +189,35 @@ The mobile app and web dashboard are fully synchronized for crew pool management
 - `ProfileScreen.tsx` - Open to Work toggle (syncs to web)
 - `AvailabilityPoolScreen.tsx` - Date-specific availability (syncs to web)
 - `AINotificationsScreen.tsx` - Receives and responds to replacement requests
+
+### Internationalization (i18n)
+
+Multi-language support for web and mobile apps using i18next.
+
+**Supported Languages:**
+- English (en) - default
+- Spanish (es)
+- French (fr)
+- Chinese Simplified (zh)
+- Portuguese (pt)
+
+**Components:**
+- `client/lib/i18n/index.ts` - i18n configuration and initialization
+- `client/lib/i18n/locales/*.json` - Translation files for each language
+- `client/screens/SettingsScreen.tsx` - Language selector in Appearance tab
+
+**Features:**
+- Language selection modal in Settings with native language names
+- Persistent language preference stored in AsyncStorage
+- Auto-translate toggle for AI-powered message translation
+- UI updates immediately when language changes
+
+**API Endpoints:**
+- POST /api/translate - Auto-translate text using OpenAI
+  - Body: { text, targetLanguage, sourceLanguage? }
+  - Returns: { original, translated, sourceLanguage, targetLanguage }
+- POST /api/user/language - Update user language preference
+  - Body: { language, autoTranslate }
+
+**Schema:**
+- User table includes `language` (default: "en") and `autoTranslate` (default: false) columns
