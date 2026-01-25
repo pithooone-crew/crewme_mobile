@@ -1,0 +1,83 @@
+Mobile App Feature: Map Dashboard & GPS Location Tracking
+Overview
+Implement a Map Dashboard in the React Native mobile app that displays real-time locations of crew members, equipment, and project sites. The app should also send the user's GPS location to the server for real-time tracking and trigger automatic geofence-based attendance check-in/out.
+
+API Endpoints
+Get Map Data:
+
+GET /api/map/crew-locations - Fetch all crew GPS positions
+GET /api/map/equipment-locations - Fetch equipment locations
+GET /api/map/site-zones?projectId={id} - Fetch site zones for a project
+GET /api/map/weather-overlay - Fetch weather data for map
+Update Location:
+
+POST /api/map/crew-locations - Send user's GPS location
+Body: { latitude, longitude, accuracy, heading, speed, projectId?, status?, batteryLevel? }
+Server enforces user identity from auth token
+Geofence Events:
+
+POST /api/map/geofence-event - Trigger auto check-in/out
+Body: { projectId, eventType: 'enter' | 'exit', latitude, longitude }
+Server validates project ownership and creates attendance record
+Features to Implement
+Map Screen
+
+React Native Maps (react-native-maps) with project markers
+Show nearby crew members with status indicators
+Display equipment locations
+Color-coded project markers (green=active, yellow=planned, gray=completed)
+Geofence circles around project sites
+Background Location Tracking
+
+Use expo-location for GPS tracking
+Update server every 30-60 seconds when app is active
+Background location updates when within 500m of a project site
+Battery-efficient tracking with configurable intervals
+Geofenced Auto Attendance
+
+Monitor project site geofences (radius from project coordinates)
+Trigger POST /api/map/geofence-event with eventType: 'enter' when entering
+Trigger POST /api/map/geofence-event with eventType: 'exit' when exiting
+Show notification when auto check-in/out occurs
+Site Zone Display
+
+Render polygonal zones on map when viewing a project
+Zone types: work_area, hazard, material_staging, access_point, restricted, parking, office
+Color-coded hazard zones by risk level (red=high, orange=medium, yellow=low)
+Weather Panel
+
+Show current weather conditions for user's location
+Display AI construction recommendations if available
+Data Models
+// Crew location from API
+interface CrewLocation {
+  id: number;
+  userId: number;
+  latitude: string;
+  longitude: string;
+  accuracy?: number;
+  heading?: number;
+  speed?: number;
+  projectId?: number;
+  status: 'active' | 'idle' | 'offline';
+  batteryLevel?: number;
+  lastUpdated: string;
+}
+// Site zone from API
+interface SiteZone {
+  id: number;
+  projectId: number;
+  name: string;
+  zoneType: 'work_area' | 'hazard' | 'material_staging' | 'access_point' | 'restricted' | 'parking' | 'office';
+  coordinates: { lat: number; lng: number }[];
+  color?: string;
+  riskLevel?: 'high' | 'medium' | 'low';
+  description?: string;
+}
+Navigation
+Add "Map" tab to bottom navigation with map icon.
+
+Permissions Required
+Location (foreground and background)
+Motion & Fitness (for activity detection)
+This prompt gives the mobile developer everything needed to implement the feature. Want me to make any adjustments to the prompt?

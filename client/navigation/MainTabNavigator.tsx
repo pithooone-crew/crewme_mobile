@@ -5,6 +5,7 @@ import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import TasksStackNavigator from "@/navigation/TasksStackNavigator";
+import MapStackNavigator from "@/navigation/MapStackNavigator";
 import ProgressStackNavigator from "@/navigation/ProgressStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -13,6 +14,7 @@ import { Colors } from "@/constants/theme";
 export type MainTabParamList = {
   HomeTab: undefined;
   TasksTab: undefined;
+  MapTab: undefined;
   ProgressTab: undefined;
   ProfileTab: undefined;
 };
@@ -65,6 +67,16 @@ export default function MainTabNavigator() {
           title: "Tasks",
           tabBarIcon: ({ color, size }) => (
             <Feather name="clipboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MapTab"
+        component={MapStackNavigator}
+        options={{
+          title: "Map",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="map" size={size} color={color} />
           ),
         }}
       />

@@ -485,6 +485,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // MAP DASHBOARD & GPS LOCATION TRACKING
+  // ============================================
+
+  // In-memory storage for crew locations (in production, use database)
+  const crewLocations: Map<number, {
+    id: number;
+    userId: number;
+    userName?: string;
+    latitude: string;
+    longitude: string;
+    accuracy?: number;
+    heading?: number;
+    speed?: number;
+    projectId?: number;
+    status: "active" | "idle" | "offline";
+    batteryLevel?: number;
+    lastUpdated: string;
+  }> = new Map();
+
+  // Get all crew GPS positions
+  app.get("/api/map/crew-locations", async (req, res) => {
+    try {
+      // Convert map to array and return
+      const locations = Array.from(crewLocations.values());
+      
+      // Mark locations older than 5 minutes as idle, older than 15 minutes as offline
+      const now = Date.now();
+      const updatedLocations = locations.map(loc => {
+        const lastUpdate = new Date(loc.lastUpdated).getTime();
+        const minutesAgo = (now - lastUpdate) / (1000 * 60);
+        
+        let status = loc.status;
+        if (minutesAgo > 15) status = "offline";
+        else if (minutesAgo > 5) status = "idle";
+        
+        return { ...loc, status };
+      });
+      
+      res.json(updatedLocations);
+    } catch (error) {
+      console.error("Error getting crew locations:", error);
+      res.status(500).json({ error: "Failed to get crew locations" });
+    }
+  });
+
+  // Update user's GPS location
+  app.post("/api/map/crew-locations", async (req, res) => {
+    try {
+      const { latitude, longitude, accuracy, heading, speed, projectId, batteryLevel } = req.body;
+      
+      // In production, get user ID from auth token
+      const userId = 1; // Mock user ID
+      const userName = "Current User";
+      
+      const locationData = {
+        id: userId,
+        userId,
+        userName,
+        latitude: String(latitude),
+        longitude: String(longitude),
+        accuracy,
+        heading,
+        speed,
+        projectId,
+        status: "active" as const,
+        batteryLevel,
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      crewLocations.set(userId, locationData);
+      
+      // Sync with external web app
+      try {
+        await fetch("https://site-scheduler--pithooone.replit.app/api/mobile/crew-locations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...locationData,
+            source: "crewme-mobile",
+          }),
+        });
+      } catch (syncError) {
+        console.log("External sync failed for crew location:", syncError);
+      }
+      
+      res.json({ success: true, location: locationData });
+    } catch (error) {
+      console.error("Error updating crew location:", error);
+      res.status(500).json({ error: "Failed to update location" });
+    }
+  });
+
+  // Get equipment locations
+  app.get("/api/map/equipment-locations", async (req, res) => {
+    try {
+      // In production, fetch from database
+      // For demo, return mock data
+      const equipment = [
+        {
+          id: 1,
+          name: "Excavator #1",
+          type: "excavator",
+          latitude: "37.7749",
+          longitude: "-122.4194",
+          status: "in_use",
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          name: "Crane #1",
+          type: "crane",
+          latitude: "37.7755",
+          longitude: "-122.4180",
+          status: "available",
+          lastUpdated: new Date().toISOString(),
+        },
+      ];
+      
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error getting equipment locations:", error);
+      res.status(500).json({ error: "Failed to get equipment locations" });
+    }
+  });
+
+  // Get projects with map markers
+  app.get("/api/map/projects", async (req, res) => {
+    try {
+      // In production, fetch from database
+      const projects = [
+        {
+          id: 1,
+          name: "Downtown Office Tower",
+          latitude: "37.7849",
+          longitude: "-122.4094",
+          status: "active",
+          geofenceRadius: 100,
+        },
+        {
+          id: 2,
+          name: "Harbor Bridge Renovation",
+          latitude: "37.7949",
+          longitude: "-122.3994",
+          status: "active",
+          geofenceRadius: 150,
+        },
+        {
+          id: 3,
+          name: "Residential Complex Phase 2",
+          latitude: "37.7649",
+          longitude: "-122.4294",
+          status: "planned",
+          geofenceRadius: 100,
+        },
+      ];
+      
+      res.json(projects);
+    } catch (error) {
+      console.error("Error getting map projects:", error);
+      res.status(500).json({ error: "Failed to get projects" });
+    }
+  });
+
+  // Get site zones for a project
+  app.get("/api/map/site-zones", async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      
+      if (!projectId) {
+        return res.json([]);
+      }
+      
+      // In production, fetch from database
+      const zones = [
+        {
+          id: 1,
+          projectId: Number(projectId),
+          name: "Main Work Area",
+          zoneType: "work_area",
+          coordinates: [
+            { lat: 37.7845, lng: -122.4100 },
+            { lat: 37.7855, lng: -122.4100 },
+            { lat: 37.7855, lng: -122.4088 },
+            { lat: 37.7845, lng: -122.4088 },
+          ],
+          description: "Primary construction zone",
+        },
+        {
+          id: 2,
+          projectId: Number(projectId),
+          name: "High Voltage Area",
+          zoneType: "hazard",
+          riskLevel: "high",
+          coordinates: [
+            { lat: 37.7852, lng: -122.4095 },
+            { lat: 37.7856, lng: -122.4095 },
+            { lat: 37.7856, lng: -122.4090 },
+            { lat: 37.7852, lng: -122.4090 },
+          ],
+          description: "Electrical hazard - authorized personnel only",
+        },
+        {
+          id: 3,
+          projectId: Number(projectId),
+          name: "Material Staging",
+          zoneType: "material_staging",
+          coordinates: [
+            { lat: 37.7840, lng: -122.4095 },
+            { lat: 37.7845, lng: -122.4095 },
+            { lat: 37.7845, lng: -122.4088 },
+            { lat: 37.7840, lng: -122.4088 },
+          ],
+          description: "Material storage and staging area",
+        },
+      ];
+      
+      res.json(zones);
+    } catch (error) {
+      console.error("Error getting site zones:", error);
+      res.status(500).json({ error: "Failed to get site zones" });
+    }
+  });
+
+  // Get weather overlay data
+  app.get("/api/map/weather-overlay", async (req, res) => {
+    try {
+      const { latitude, longitude } = req.query;
+      
+      // In production, call weather API
+      // For demo, return mock weather data
+      const weather = {
+        temperature: 72,
+        condition: "Partly Cloudy",
+        icon: "cloud",
+        humidity: 45,
+        windSpeed: 8,
+        aiRecommendation: "Good conditions for concrete work. UV index moderate - ensure crew has sun protection.",
+      };
+      
+      res.json(weather);
+    } catch (error) {
+      console.error("Error getting weather data:", error);
+      res.status(500).json({ error: "Failed to get weather data" });
+    }
+  });
+
+  // Handle geofence events (auto check-in/out)
+  app.post("/api/map/geofence-event", async (req, res) => {
+    try {
+      const { projectId, eventType, latitude, longitude } = req.body;
+      
+      if (!projectId || !eventType) {
+        return res.status(400).json({ error: "Project ID and event type are required" });
+      }
+      
+      // In production, get user ID from auth token
+      const userId = 1;
+      const timestamp = new Date().toISOString();
+      
+      // Create attendance record
+      const attendanceRecord = {
+        userId,
+        projectId,
+        eventType,
+        latitude,
+        longitude,
+        timestamp,
+        autoGenerated: true,
+      };
+      
+      // Sync with external web app
+      try {
+        await fetch("https://site-scheduler--pithooone.replit.app/api/mobile/geofence-attendance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...attendanceRecord,
+            source: "crewme-mobile",
+          }),
+        });
+      } catch (syncError) {
+        console.log("External sync failed for geofence event:", syncError);
+      }
+      
+      res.json({
+        success: true,
+        eventType,
+        projectId,
+        timestamp,
+        message: eventType === "enter" 
+          ? "Automatically checked in to project site" 
+          : "Automatically checked out from project site",
+      });
+    } catch (error) {
+      console.error("Error processing geofence event:", error);
+      res.status(500).json({ error: "Failed to process geofence event" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
