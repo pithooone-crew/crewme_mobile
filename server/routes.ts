@@ -505,6 +505,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     lastUpdated: string;
   }> = new Map();
 
+  // Initialize with mock crew data for demo
+  const mockCrewData = [
+    { id: 1, userId: 1, userName: "John Smith", latitude: "40.7128", longitude: "-74.0060", accuracy: 10, heading: 45, speed: 2.5, projectId: 1, status: "active" as const, batteryLevel: 85, lastUpdated: new Date().toISOString() },
+    { id: 2, userId: 2, userName: "Maria Garcia", latitude: "40.7135", longitude: "-74.0055", accuracy: 8, heading: 180, speed: 0, projectId: 1, status: "active" as const, batteryLevel: 72, lastUpdated: new Date().toISOString() },
+    { id: 3, userId: 3, userName: "James Wilson", latitude: "40.7120", longitude: "-74.0070", accuracy: 15, heading: 270, speed: 1.2, projectId: 1, status: "idle" as const, batteryLevel: 45, lastUpdated: new Date(Date.now() - 10 * 60 * 1000).toISOString() },
+    { id: 4, userId: 4, userName: "Sarah Chen", latitude: "40.7142", longitude: "-74.0048", accuracy: 12, heading: 90, speed: 3.0, projectId: 2, status: "active" as const, batteryLevel: 92, lastUpdated: new Date().toISOString() },
+    { id: 5, userId: 5, userName: "Mike Johnson", latitude: "40.7115", longitude: "-74.0080", accuracy: 20, status: "offline" as const, batteryLevel: 15, lastUpdated: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
+  ];
+  mockCrewData.forEach(crew => crewLocations.set(crew.id, crew));
+
   // Get all crew GPS positions
   app.get("/api/map/crew-locations", async (req, res) => {
     try {

@@ -9,6 +9,7 @@ import {
   Alert,
   Linking,
   ScrollView,
+  Modal,
 } from "react-native";
 import * as Location from "expo-location";
 import { MapView, Marker, Circle, Polygon, PROVIDER_GOOGLE, isMapAvailable } from "@/components/MapViewWrapper";
@@ -91,6 +92,7 @@ export default function MapScreen() {
   const [showWeather, setShowWeather] = useState(true);
   const [isInsideGeofence, setIsInsideGeofence] = useState<number | null>(null);
   const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
+  const [selectedCrew, setSelectedCrew] = useState<CrewLocation | null>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
   const { 
@@ -379,7 +381,12 @@ export default function MapScreen() {
         <View style={[styles.webCard, { backgroundColor: theme.backgroundDefault }]}>
           <Text style={[styles.webCardTitle, { color: theme.text }]}>Crew Locations ({crewLocations.length})</Text>
           {crewLocations.length > 0 ? crewLocations.map((crew) => (
-            <View key={crew.id} style={styles.webListItem}>
+            <Pressable 
+              key={crew.id} 
+              style={styles.webListItem}
+              onPress={() => setSelectedCrew(crew)}
+              testID={`crew-item-${crew.id}`}
+            >
               <View style={[styles.statusDot, { backgroundColor: getStatusColor(crew.status) }]} />
               <View style={styles.webListContent}>
                 <Text style={[styles.webListName, { color: theme.text }]}>{crew.userName || `Crew #${crew.userId}`}</Text>
@@ -387,7 +394,8 @@ export default function MapScreen() {
                   Status: {crew.status} | Last update: {new Date(crew.lastUpdated).toLocaleTimeString()}
                 </Text>
               </View>
-            </View>
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            </Pressable>
           )) : (
             <Text style={[styles.webEmptyText, { color: theme.textSecondary }]}>No crew locations available</Text>
           )}
@@ -423,6 +431,134 @@ export default function MapScreen() {
             ) : null}
           </View>
         ) : null}
+
+        <Modal
+          visible={selectedCrew !== null}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedCrew(null)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setSelectedCrew(null)}
+          >
+            <Pressable 
+              style={[styles.crewDetailCard, { backgroundColor: theme.backgroundDefault }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {selectedCrew ? (
+                <>
+                  <View style={styles.crewDetailHeader}>
+                    <View style={[styles.crewAvatar, { backgroundColor: getCrewStatusColor(selectedCrew.status) }]}>
+                      <Feather name="user" size={32} color="#fff" />
+                    </View>
+                    <View style={styles.crewDetailInfo}>
+                      <Text style={[styles.crewDetailName, { color: theme.text }]}>
+                        {selectedCrew.userName || `Crew Member #${selectedCrew.userId}`}
+                      </Text>
+                      <View style={styles.crewStatusRow}>
+                        <View style={[styles.crewStatusBadge, { backgroundColor: `${getCrewStatusColor(selectedCrew.status)}20` }]}>
+                          <View style={[styles.crewStatusDot, { backgroundColor: getCrewStatusColor(selectedCrew.status) }]} />
+                          <Text style={[styles.crewStatusText, { color: getCrewStatusColor(selectedCrew.status) }]}>
+                            {selectedCrew.status.charAt(0).toUpperCase() + selectedCrew.status.slice(1)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Pressable 
+                      style={styles.crewDetailClose}
+                      onPress={() => setSelectedCrew(null)}
+                      testID="close-crew-modal"
+                    >
+                      <Feather name="x" size={24} color={theme.textSecondary} />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.crewDetailStats}>
+                    {selectedCrew.batteryLevel !== undefined ? (
+                      <View style={styles.crewDetailStat}>
+                        <Feather 
+                          name={selectedCrew.batteryLevel > 20 ? "battery" : "battery-charging"} 
+                          size={18} 
+                          color={selectedCrew.batteryLevel > 20 ? Colors.success : Colors.error} 
+                        />
+                        <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                          {selectedCrew.batteryLevel}%
+                        </Text>
+                        <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Battery</Text>
+                      </View>
+                    ) : null}
+
+                    {selectedCrew.speed !== undefined ? (
+                      <View style={styles.crewDetailStat}>
+                        <Feather name="activity" size={18} color={Colors.primary} />
+                        <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                          {Math.round(selectedCrew.speed * 3.6)} km/h
+                        </Text>
+                        <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Speed</Text>
+                      </View>
+                    ) : null}
+
+                    {selectedCrew.accuracy !== undefined ? (
+                      <View style={styles.crewDetailStat}>
+                        <Feather name="crosshair" size={18} color={Colors.warning} />
+                        <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                          {Math.round(selectedCrew.accuracy)}m
+                        </Text>
+                        <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Accuracy</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={[styles.crewDetailDivider, { backgroundColor: theme.border }]} />
+
+                  <View style={styles.crewDetailRow}>
+                    <Feather name="clock" size={16} color={theme.textSecondary} />
+                    <Text style={[styles.crewDetailRowText, { color: theme.textSecondary }]}>
+                      Last updated: {new Date(selectedCrew.lastUpdated).toLocaleTimeString()}
+                    </Text>
+                  </View>
+
+                  {selectedCrew.heading !== undefined ? (
+                    <View style={styles.crewDetailRow}>
+                      <Feather name="navigation" size={16} color={theme.textSecondary} />
+                      <Text style={[styles.crewDetailRowText, { color: theme.textSecondary }]}>
+                        Heading: {Math.round(selectedCrew.heading)}°
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.crewDetailActions}>
+                    <Pressable 
+                      style={[styles.crewDetailAction, { backgroundColor: Colors.primary }]}
+                      onPress={() => {
+                        setSelectedCrew(null);
+                        Alert.alert("Message", `Send message to ${selectedCrew.userName || "crew member"}?`);
+                      }}
+                      testID="message-crew-button"
+                    >
+                      <Feather name="message-circle" size={20} color="#fff" />
+                      <Text style={styles.crewDetailActionText}>Message</Text>
+                    </Pressable>
+                    <Pressable 
+                      style={[styles.crewDetailAction, { backgroundColor: Colors.success }]}
+                      onPress={() => {
+                        const lat = parseFloat(selectedCrew.latitude);
+                        const lng = parseFloat(selectedCrew.longitude);
+                        const url = `https://maps.google.com/maps?daddr=${lat},${lng}`;
+                        Linking.openURL(url);
+                      }}
+                      testID="navigate-crew-button"
+                    >
+                      <Feather name="navigation" size={20} color="#fff" />
+                      <Text style={styles.crewDetailActionText}>Navigate</Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </ScrollView>
     );
   }
@@ -512,10 +648,9 @@ export default function MapScreen() {
               latitude: parseFloat(crew.latitude),
               longitude: parseFloat(crew.longitude),
             }}
-            title={crew.userName || `Crew #${crew.userId}`}
-            description={`Status: ${crew.status}${crew.batteryLevel ? ` | Battery: ${crew.batteryLevel}%` : ""}${crew.speed ? ` | Speed: ${Math.round(crew.speed * 3.6)} km/h` : ""}`}
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={true}
+            onPress={() => setSelectedCrew(crew)}
           >
             <AnimatedMarkerContent
               heading={crew.heading}
@@ -628,8 +763,146 @@ export default function MapScreen() {
           <ActivityIndicator size="small" color={Colors.primary} />
         </View>
       )}
+
+      <Modal
+        visible={selectedCrew !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedCrew(null)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setSelectedCrew(null)}
+        >
+          <Pressable 
+            style={[styles.crewDetailCard, { backgroundColor: theme.backgroundDefault }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {selectedCrew ? (
+              <>
+                <View style={styles.crewDetailHeader}>
+                  <View style={[styles.crewAvatar, { backgroundColor: getCrewStatusColor(selectedCrew.status) }]}>
+                    <Feather name="user" size={32} color="#fff" />
+                  </View>
+                  <View style={styles.crewDetailInfo}>
+                    <Text style={[styles.crewDetailName, { color: theme.text }]}>
+                      {selectedCrew.userName || `Crew Member #${selectedCrew.userId}`}
+                    </Text>
+                    <View style={styles.crewStatusRow}>
+                      <View style={[styles.crewStatusBadge, { backgroundColor: `${getCrewStatusColor(selectedCrew.status)}20` }]}>
+                        <View style={[styles.crewStatusDot, { backgroundColor: getCrewStatusColor(selectedCrew.status) }]} />
+                        <Text style={[styles.crewStatusText, { color: getCrewStatusColor(selectedCrew.status) }]}>
+                          {selectedCrew.status.charAt(0).toUpperCase() + selectedCrew.status.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Pressable 
+                    style={styles.crewDetailClose}
+                    onPress={() => setSelectedCrew(null)}
+                  >
+                    <Feather name="x" size={24} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.crewDetailStats}>
+                  {selectedCrew.batteryLevel !== undefined ? (
+                    <View style={styles.crewDetailStat}>
+                      <Feather 
+                        name={selectedCrew.batteryLevel > 20 ? "battery" : "battery-charging"} 
+                        size={18} 
+                        color={selectedCrew.batteryLevel > 20 ? Colors.success : Colors.error} 
+                      />
+                      <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                        {selectedCrew.batteryLevel}%
+                      </Text>
+                      <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Battery</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedCrew.speed !== undefined ? (
+                    <View style={styles.crewDetailStat}>
+                      <Feather name="activity" size={18} color={Colors.primary} />
+                      <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                        {Math.round(selectedCrew.speed * 3.6)} km/h
+                      </Text>
+                      <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Speed</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedCrew.accuracy !== undefined ? (
+                    <View style={styles.crewDetailStat}>
+                      <Feather name="crosshair" size={18} color={Colors.warning} />
+                      <Text style={[styles.crewDetailStatValue, { color: theme.text }]}>
+                        {Math.round(selectedCrew.accuracy)}m
+                      </Text>
+                      <Text style={[styles.crewDetailStatLabel, { color: theme.textSecondary }]}>Accuracy</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={[styles.crewDetailDivider, { backgroundColor: theme.border }]} />
+
+                <View style={styles.crewDetailRow}>
+                  <Feather name="clock" size={16} color={theme.textSecondary} />
+                  <Text style={[styles.crewDetailRowText, { color: theme.textSecondary }]}>
+                    Last updated: {new Date(selectedCrew.lastUpdated).toLocaleTimeString()}
+                  </Text>
+                </View>
+
+                {selectedCrew.heading !== undefined ? (
+                  <View style={styles.crewDetailRow}>
+                    <Feather name="navigation" size={16} color={theme.textSecondary} />
+                    <Text style={[styles.crewDetailRowText, { color: theme.textSecondary }]}>
+                      Heading: {Math.round(selectedCrew.heading)}°
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.crewDetailActions}>
+                  <Pressable 
+                    style={[styles.crewDetailAction, { backgroundColor: Colors.primary }]}
+                    onPress={() => {
+                      setSelectedCrew(null);
+                      Alert.alert("Message", `Send message to ${selectedCrew.userName || "crew member"}?`);
+                    }}
+                  >
+                    <Feather name="message-circle" size={20} color="#fff" />
+                    <Text style={styles.crewDetailActionText}>Message</Text>
+                  </Pressable>
+                  <Pressable 
+                    style={[styles.crewDetailAction, { backgroundColor: Colors.success }]}
+                    onPress={() => {
+                      const lat = parseFloat(selectedCrew.latitude);
+                      const lng = parseFloat(selectedCrew.longitude);
+                      const url = Platform.select({
+                        ios: `maps://app?daddr=${lat},${lng}`,
+                        android: `google.navigation:q=${lat},${lng}`,
+                        default: `https://maps.google.com/maps?daddr=${lat},${lng}`,
+                      });
+                      Linking.openURL(url as string);
+                    }}
+                  >
+                    <Feather name="navigation" size={20} color="#fff" />
+                    <Text style={styles.crewDetailActionText}>Navigate</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
+}
+
+function getCrewStatusColor(status: string) {
+  switch (status) {
+    case "active": return Colors.success;
+    case "idle": return Colors.warning;
+    case "offline": return Colors.textSecondary;
+    default: return Colors.primary;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -903,5 +1176,112 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 11,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  crewDetailCard: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    paddingBottom: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  crewDetailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  crewAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  crewDetailInfo: {
+    flex: 1,
+  },
+  crewDetailName: {
+    ...Typography.h3,
+    marginBottom: Spacing.xs,
+  },
+  crewStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  crewStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  crewStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  crewStatusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  crewDetailClose: {
+    padding: Spacing.xs,
+  },
+  crewDetailStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: Spacing.lg,
+  },
+  crewDetailStat: {
+    alignItems: "center",
+    gap: 4,
+  },
+  crewDetailStatValue: {
+    ...Typography.h3,
+  },
+  crewDetailStatLabel: {
+    ...Typography.small,
+  },
+  crewDetailDivider: {
+    height: 1,
+    marginVertical: Spacing.md,
+  },
+  crewDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  crewDetailRowText: {
+    ...Typography.body,
+  },
+  crewDetailActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.xl,
+  },
+  crewDetailAction: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  crewDetailActionText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
