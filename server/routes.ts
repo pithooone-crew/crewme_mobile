@@ -94,6 +94,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auto-translate message endpoint
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { text, targetLanguage, sourceLanguage } = req.body;
+
+      if (!text || !targetLanguage) {
+        return res.status(400).json({ error: "Text and target language are required" });
+      }
+
+      const languageNames: Record<string, string> = {
+        en: "English",
+        es: "Spanish",
+        fr: "French",
+        zh: "Chinese (Simplified)",
+        pt: "Portuguese",
+      };
+
+      const targetLangName = languageNames[targetLanguage] || targetLanguage;
+      const sourceLangName = sourceLanguage ? languageNames[sourceLanguage] || sourceLanguage : "auto-detected";
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate the following text to ${targetLangName}. Only output the translation, nothing else. Maintain the original formatting and tone.`,
+          },
+          {
+            role: "user",
+            content: text,
+          },
+        ],
+        max_tokens: 1000,
+      });
+
+      const translatedText = response.choices[0]?.message?.content || text;
+
+      res.json({
+        original: text,
+        translated: translatedText.trim(),
+        sourceLanguage: sourceLangName,
+        targetLanguage: targetLangName,
+      });
+    } catch (error) {
+      console.error("Error translating text:", error);
+      res.status(500).json({ error: "Failed to translate text" });
+    }
+  });
+
+  // Update user language preference
+  app.post("/api/user/language", async (req, res) => {
+    try {
+      const { language, autoTranslate } = req.body;
+
+      if (!language) {
+        return res.status(400).json({ error: "Language is required" });
+      }
+
+      // In production, update the user's language in the database
+      res.json({
+        success: true,
+        language,
+        autoTranslate: autoTranslate || false,
+      });
+    } catch (error) {
+      console.error("Error updating language preference:", error);
+      res.status(500).json({ error: "Failed to update language preference" });
+    }
+  });
+
   // Get read status for a message
   app.get("/api/crew-messages/:id/read-status", async (req, res) => {
     try {

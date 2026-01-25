@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform, Modal, FlatList } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -7,12 +7,14 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius, FontSizes } from "@/constants/theme";
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { supportedLanguages, changeLanguage, getCurrentLanguage, type LanguageCode } from "@/lib/i18n";
 
 const SETTINGS_STORAGE_KEY = "@crewme_settings";
 
@@ -52,10 +54,14 @@ export default function SettingsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { user, logout } = useAuth();
   const { theme, themeMode, setThemeMode, isDark } = useTheme();
+  const { t, i18n } = useTranslation();
   
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(getCurrentLanguage());
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [autoTranslate, setAutoTranslate] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -153,6 +159,27 @@ export default function SettingsScreen() {
     setThemeMode(mode);
   };
 
+  const handleLanguageSelect = async (langCode: LanguageCode) => {
+    if (settings.hapticFeedback && Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await changeLanguage(langCode);
+    setCurrentLanguage(langCode);
+    setShowLanguageModal(false);
+  };
+
+  const handleAutoTranslateToggle = (value: boolean) => {
+    if (settings.hapticFeedback && Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setAutoTranslate(value);
+    AsyncStorage.setItem("@crewme_auto_translate", value ? "true" : "false");
+  };
+
+  const getCurrentLanguageInfo = () => {
+    return supportedLanguages.find((lang) => lang.code === currentLanguage) || supportedLanguages[0];
+  };
+
   const tabs: { id: SettingsTab; label: string; icon: keyof typeof Feather.glyphMap }[] = [
     { id: "appearance", label: "Appearance", icon: "eye" },
     { id: "notifications", label: "Alerts", icon: "bell" },
@@ -229,28 +256,56 @@ export default function SettingsScreen() {
   const renderAppearanceTab = () => (
     <>
       <Card style={styles.section}>
-        <SectionHeader title="Theme" />
+        <SectionHeader title={t("settings.theme")} />
         <View style={styles.themeOptions}>
-          <ThemeOption mode="light" label="Light" icon="sun" />
-          <ThemeOption mode="dark" label="Dark" icon="moon" />
-          <ThemeOption mode="system" label="System" icon="smartphone" />
+          <ThemeOption mode="light" label={t("settings.light")} icon="sun" />
+          <ThemeOption mode="dark" label={t("settings.dark")} icon="moon" />
+          <ThemeOption mode="system" label={t("settings.system")} icon="smartphone" />
         </View>
       </Card>
 
       <Card style={styles.section}>
-        <SectionHeader title="App Experience" />
+        <SectionHeader title={t("settings.language")} />
+        <Pressable 
+          style={styles.languageSelector}
+          onPress={() => setShowLanguageModal(true)}
+          testID="button-language-selector"
+        >
+          <View style={[styles.settingIcon, { backgroundColor: `${Colors.primary}15` }]}>
+            <Feather name="globe" size={20} color={Colors.primary} />
+          </View>
+          <View style={styles.settingContent}>
+            <ThemedText style={styles.settingTitle}>{t("settings.selectLanguage")}</ThemedText>
+            <ThemedText style={styles.settingSubtitle}>
+              {getCurrentLanguageInfo().nativeName} ({getCurrentLanguageInfo().name})
+            </ThemedText>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingRow
+          icon="refresh-cw"
+          title={t("settings.autoTranslate")}
+          subtitle={t("settings.autoTranslateDesc")}
+          value={autoTranslate}
+          onToggle={handleAutoTranslateToggle}
+        />
+      </Card>
+
+      <Card style={styles.section}>
+        <SectionHeader title={t("settings.appExperience")} />
         <SettingRow
           icon="smartphone"
-          title="Haptic Feedback"
-          subtitle="Vibration feedback on actions"
+          title={t("settings.hapticFeedback")}
+          subtitle={t("settings.hapticFeedbackDesc")}
           value={settings.hapticFeedback}
           onToggle={(v) => updateSetting("hapticFeedback", v)}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingRow
           icon="volume-2"
-          title="Sound Effects"
-          subtitle="Play sounds for notifications"
+          title={t("settings.soundEffects")}
+          subtitle={t("settings.soundEffectsDesc")}
           value={settings.soundEffects}
           onToggle={(v) => updateSetting("soundEffects", v)}
         />
@@ -450,10 +505,56 @@ export default function SettingsScreen() {
         </Pressable>
 
         <ThemedText style={[styles.footerText, { color: theme.textSecondary }]}>
-          Signed in as {user?.email || "demo@crewme.app"}
+          {t("settings.signedInAs")} {user?.email || "demo@crewme.app"}
         </ThemedText>
         <ThemedText style={[styles.versionText, { color: theme.textSecondary }]}>CrewMe v1.0.0</ThemedText>
       </ScrollView>
+
+      <Modal
+        visible={showLanguageModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h3">{t("settings.selectLanguage")}</ThemedText>
+              <Pressable onPress={() => setShowLanguageModal(false)} testID="button-close-language-modal">
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={supportedLanguages}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[
+                    styles.languageOption,
+                    currentLanguage === item.code ? { backgroundColor: `${Colors.primary}15` } : null,
+                  ]}
+                  onPress={() => handleLanguageSelect(item.code as LanguageCode)}
+                  testID={`button-language-${item.code}`}
+                >
+                  <ThemedText style={styles.languageFlag}>{item.flag}</ThemedText>
+                  <View style={styles.languageInfo}>
+                    <ThemedText style={styles.languageName}>{item.nativeName}</ThemedText>
+                    <ThemedText style={[styles.languageNameSecondary, { color: theme.textSecondary }]}>
+                      {item.name}
+                    </ThemedText>
+                  </View>
+                  {currentLanguage === item.code ? (
+                    <Feather name="check-circle" size={20} color={Colors.primary} />
+                  ) : null}
+                </Pressable>
+              )}
+            />
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -603,5 +704,52 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: Spacing.xs,
     opacity: 0.6,
+  },
+  languageSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+    maxHeight: "60%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.2)",
+  },
+  languageOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  languageFlag: {
+    fontSize: 28,
+    marginRight: Spacing.md,
+  },
+  languageInfo: {
+    flex: 1,
+  },
+  languageName: {
+    fontWeight: "600",
+    fontSize: FontSizes.md,
+  },
+  languageNameSecondary: {
+    fontSize: FontSizes.sm,
+    marginTop: 2,
   },
 });
