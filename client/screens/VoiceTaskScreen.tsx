@@ -173,81 +173,83 @@ export default function VoiceTaskScreen() {
     }
   };
 
-  const handleStartRecording = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    setIsRecording(true);
-    setTranscribedText("");
-    setParsedUpdate(null);
-    setSelectedTask(null);
-    setIsEditing(false);
-    setAiConfidence(null);
-    setAiReasoning("");
-  };
-
-  const handleStopRecording = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    setIsRecording(false);
-    setIsProcessing(true);
-
-    // Simulate voice transcription
-    setProcessingStep("Transcribing your voice...");
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // Mock transcription examples that mention specific tasks/projects
-    const mockTranscriptions = [
-      "I just finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.",
-      "Working on the electrical rough-in on floor 3. About 75% complete, need more 12-gauge wire to finish.",
-      "The plumbing fixtures in the restrooms are blocked. Waiting for inspection approval before we can continue.",
-      "HVAC ductwork on floor 2 is progressing well. Should be done by end of day.",
-      "Started painting the exterior walls at Riverside. Weather is good, making great progress.",
-    ];
-
-    const randomTranscription = mockTranscriptions[Math.floor(Math.random() * mockTranscriptions.length)];
-    setTranscribedText(randomTranscription);
-
-    // Use AI to identify the task
-    setProcessingStep("AI identifying task...");
-    await new Promise((r) => setTimeout(r, 500));
-
-    const aiResult = await parseVoiceWithAI(randomTranscription);
-
-    if (aiResult.needsManualSelection) {
-      // AI couldn't identify the task - ask user to select
-      setIsProcessing(false);
-      setAiConfidence("low");
-      setShowTaskPicker(true);
+  const handleToggleRecording = async () => {
+    if (isRecording) {
+      // Stop recording and process
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
-      Alert.alert(
-        "Select Task",
-        "I couldn't identify which task you're updating. Please select it from the list.",
-        [{ text: "OK" }]
-      );
+      setIsRecording(false);
+      setIsProcessing(true);
+
+      // Simulate voice transcription
+      setProcessingStep("Transcribing your voice...");
+      await new Promise((r) => setTimeout(r, 1500));
+
+      // Mock transcription examples that mention specific tasks/projects
+      const mockTranscriptions = [
+        "I just finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.",
+        "Working on the electrical rough-in on floor 3. About 75% complete, need more 12-gauge wire to finish.",
+        "The plumbing fixtures in the restrooms are blocked. Waiting for inspection approval before we can continue.",
+        "HVAC ductwork on floor 2 is progressing well. Should be done by end of day.",
+        "Started painting the exterior walls at Riverside. Weather is good, making great progress.",
+      ];
+
+      const randomTranscription = mockTranscriptions[Math.floor(Math.random() * mockTranscriptions.length)];
+      setTranscribedText(randomTranscription);
+
+      // Use AI to identify the task
+      setProcessingStep("AI identifying task...");
+      await new Promise((r) => setTimeout(r, 500));
+
+      const aiResult = await parseVoiceWithAI(randomTranscription);
+
+      if (aiResult.needsManualSelection) {
+        // AI couldn't identify the task - ask user to select
+        setIsProcessing(false);
+        setAiConfidence("low");
+        setShowTaskPicker(true);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+        Alert.alert(
+          "Select Task",
+          "I couldn't identify which task you're updating. Please select it from the list.",
+          [{ text: "OK" }]
+        );
+      } else {
+        // AI identified the task
+        setSelectedTask(aiResult.matchedTask);
+        setAiConfidence(aiResult.confidence);
+        setAiReasoning(aiResult.reasoning);
+        
+        const parsed = {
+          taskId: aiResult.matchedTask.id,
+          task: aiResult.matchedTask.title,
+          status: aiResult.suggestedStatus,
+          notes: aiResult.extractedNotes,
+        };
+
+        setParsedUpdate(parsed);
+        setEditableNotes(aiResult.extractedNotes);
+        setIsProcessing(false);
+
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
     } else {
-      // AI identified the task
-      setSelectedTask(aiResult.matchedTask);
-      setAiConfidence(aiResult.confidence);
-      setAiReasoning(aiResult.reasoning);
-      
-      const parsed = {
-        taskId: aiResult.matchedTask.id,
-        task: aiResult.matchedTask.title,
-        status: aiResult.suggestedStatus,
-        notes: aiResult.extractedNotes,
-      };
-
-      setParsedUpdate(parsed);
-      setEditableNotes(aiResult.extractedNotes);
-      setIsProcessing(false);
-
+      // Start recording
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
+      setIsRecording(true);
+      setTranscribedText("");
+      setParsedUpdate(null);
+      setSelectedTask(null);
+      setIsEditing(false);
+      setAiConfidence(null);
+      setAiReasoning("");
     }
   };
 
@@ -420,18 +422,18 @@ export default function VoiceTaskScreen() {
                 styles.microphoneButton,
                 { backgroundColor: isRecording ? Colors.error : accentColors.primary },
               ]}
-              onPressIn={handleStartRecording}
-              onPressOut={handleStopRecording}
+              onPress={handleToggleRecording}
+              disabled={isProcessing}
               testID="voice-record-button"
             >
               <Animated.View style={pulseStyle}>
-                <Feather name="mic" size={40} color="#FFFFFF" />
+                <Feather name={isRecording ? "square" : "mic"} size={40} color="#FFFFFF" />
               </Animated.View>
             </Pressable>
           </View>
 
           <ThemedText style={styles.micHint}>
-            {isRecording ? "Recording... Release to stop" : "Hold to record"}
+            {isRecording ? "Tap to stop when done speaking" : "Tap to start recording"}
           </ThemedText>
 
           {isProcessing ? (
@@ -602,7 +604,7 @@ export default function VoiceTaskScreen() {
         onRequestClose={() => setShowTaskPicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Select Task</ThemedText>
               <Pressable onPress={() => setShowTaskPicker(false)}>
@@ -653,7 +655,7 @@ export default function VoiceTaskScreen() {
         onRequestClose={() => setShowStatusPicker(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowStatusPicker(false)}>
-          <View style={[styles.statusPickerContent, { backgroundColor: theme.background }]}>
+          <View style={[styles.statusPickerContent, { backgroundColor: theme.backgroundDefault }]}>
             <ThemedText style={styles.statusPickerTitle}>Change Status</ThemedText>
             {STATUS_OPTIONS.map((option) => (
               <Pressable
