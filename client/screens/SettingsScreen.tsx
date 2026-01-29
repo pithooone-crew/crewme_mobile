@@ -53,7 +53,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { user, logout } = useAuth();
-  const { theme, themeMode, setThemeMode, isDark } = useTheme();
+  const { theme, themeMode, setThemeMode, isDark, accentColor, setAccentColor, accentColors } = useTheme();
   const { t, i18n } = useTranslation();
   
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
@@ -265,14 +265,51 @@ export default function SettingsScreen() {
       </Card>
 
       <Card style={styles.section}>
+        <SectionHeader title="Accent Color" />
+        <View style={styles.accentColorGrid}>
+          {(["blue", "orange", "green", "purple", "pink", "teal"] as const).map((color) => {
+            const colorMap: Record<string, string> = {
+              blue: "#0ea5e9",
+              orange: "#f97316",
+              green: "#10b981",
+              purple: "#8b5cf6",
+              pink: "#ec4899",
+              teal: "#14b8a6",
+            };
+            return (
+              <Pressable
+                key={color}
+                style={[
+                  styles.accentColorOption,
+                  { backgroundColor: colorMap[color] },
+                  accentColor === color && styles.accentColorSelected,
+                ]}
+                onPress={() => {
+                  if (settings.hapticFeedback && Platform.OS !== "web") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  setAccentColor(color);
+                }}
+                testID={`accent-color-${color}`}
+              >
+                {accentColor === color ? (
+                  <Feather name="check" size={20} color="#FFFFFF" />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      <Card style={styles.section}>
         <SectionHeader title={t("settings.language")} />
         <Pressable 
           style={styles.languageSelector}
           onPress={() => setShowLanguageModal(true)}
           testID="button-language-selector"
         >
-          <View style={[styles.settingIcon, { backgroundColor: `${Colors.primary}15` }]}>
-            <Feather name="globe" size={20} color={Colors.primary} />
+          <View style={[styles.settingIcon, { backgroundColor: `${accentColors.primary}15` }]}>
+            <Feather name="globe" size={20} color={accentColors.primary} />
           </View>
           <View style={styles.settingContent}>
             <ThemedText style={styles.settingTitle}>{t("settings.selectLanguage")}</ThemedText>
@@ -709,6 +746,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: Spacing.sm,
+  },
+  accentColorGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  accentColorOption: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "transparent",
+  },
+  accentColorSelected: {
+    borderColor: "rgba(255,255,255,0.5)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   modalOverlay: {
     flex: 1,

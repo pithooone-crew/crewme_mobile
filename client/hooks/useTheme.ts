@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { useThemeContext } from "@/context/ThemeContext";
+import { useThemeContext, AccentColor } from "@/context/ThemeContext";
 
 export function useTheme() {
   try {
@@ -10,6 +10,9 @@ export function useTheme() {
       isDark: context.isDark,
       themeMode: context.themeMode,
       setThemeMode: context.setThemeMode,
+      accentColor: context.accentColor,
+      setAccentColor: context.setAccentColor,
+      accentColors: context.accentColors,
     };
   } catch {
     const colorScheme = useColorScheme();
@@ -20,6 +23,9 @@ export function useTheme() {
       isDark,
       themeMode: "system" as const,
       setThemeMode: () => {},
+      accentColor: "blue" as AccentColor,
+      setAccentColor: () => {},
+      accentColors: { primary: Colors.primary, primaryDark: Colors.primaryDark },
     };
   }
 }
