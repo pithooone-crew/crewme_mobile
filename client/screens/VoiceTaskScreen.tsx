@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -29,9 +32,29 @@ import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { GradientButton } from "@/components/ui";
+import { api } from "@/lib/api";
+
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  projectId?: string;
+  projectName?: string;
+  assignedTo?: string;
+  dueDate?: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  status: string;
+}
 
 interface TaskUpdate {
   id: string;
+  taskId: string;
   taskName: string;
   projectName: string;
   status: string;
@@ -40,43 +63,68 @@ interface TaskUpdate {
   fromVoice: boolean;
 }
 
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Pending" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+  { value: "blocked", label: "Blocked" },
+];
+
 export default function VoiceTaskScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const { theme, accentColors } = useTheme();
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
+  const queryClient = useQueryClient();
 
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcribedText, setTranscribedText] = useState("");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showTaskPicker, setShowTaskPicker] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [parsedUpdate, setParsedUpdate] = useState<{
+    taskId: string;
     task: string;
     status: string;
     notes: string;
   } | null>(null);
-  const [recentUpdates, setRecentUpdates] = useState<TaskUpdate[]>([
-    {
-      id: "1",
-      taskName: "Install drywall - Room 204",
-      projectName: "Downtown Office Building",
-      status: "completed",
-      notes: "Finished all wall panels. Ready for taping tomorrow.",
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      fromVoice: true,
-    },
-    {
-      id: "2",
-      taskName: "Electrical rough-in - Floor 3",
-      projectName: "Downtown Office Building",
-      status: "in_progress",
-      notes: "50% complete. Need more 12-gauge wire.",
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      fromVoice: true,
-    },
-  ]);
+  const [editableNotes, setEditableNotes] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [recentUpdates, setRecentUpdates] = useState<TaskUpdate[]>([]);
 
   const pulseScale = useSharedValue(1);
   const waveOpacity = useSharedValue(0);
+
+  const mockTasks: Task[] = [
+    { id: "1", title: "Install drywall - Room 204", status: "in_progress", priority: "high", projectName: "Downtown Office Building" },
+    { id: "2", title: "Electrical rough-in - Floor 3", status: "pending", priority: "medium", projectName: "Downtown Office Building" },
+    { id: "3", title: "Plumbing fixtures - Restrooms", status: "in_progress", priority: "high", projectName: "Riverside Apartments" },
+    { id: "4", title: "HVAC ductwork - Floor 2", status: "pending", priority: "low", projectName: "Downtown Office Building" },
+  ];
+
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      if (isDemoMode) {
+        return mockTasks;
+      }
+      const response = await api.tasks.list();
+      return response.data || mockTasks;
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
+      if (isDemoMode) {
+        return { success: true };
+      }
+      return api.tasks.updateStatus(taskId, status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
 
   useEffect(() => {
     if (isRecording) {
@@ -105,15 +153,23 @@ export default function VoiceTaskScreen() {
   }));
 
   const handleStartRecording = async () => {
+    if (!selectedTask) {
+      Alert.alert("Select a Task", "Please select a task first before recording your update.");
+      return;
+    }
+
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setIsRecording(true);
     setTranscribedText("");
     setParsedUpdate(null);
+    setIsEditing(false);
   };
 
   const handleStopRecording = async () => {
+    if (!selectedTask) return;
+
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -122,48 +178,92 @@ export default function VoiceTaskScreen() {
 
     await new Promise((r) => setTimeout(r, 1500));
 
-    const mockTranscription = "Finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.";
-    setTranscribedText(mockTranscription);
+    const mockTranscriptions = [
+      "Finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.",
+      "Work is progressing well. About 75% complete. Need additional materials for the final section.",
+      "Task is blocked. Waiting for electrical inspection before we can continue.",
+      "Completed all required work. Ready for quality inspection.",
+    ];
+
+    const randomTranscription = mockTranscriptions[Math.floor(Math.random() * mockTranscriptions.length)];
+    setTranscribedText(randomTranscription);
 
     await new Promise((r) => setTimeout(r, 1000));
 
-    setParsedUpdate({
-      task: "Install drywall - Room 204",
-      status: "completed",
-      notes: "All panels are up and ready for taping tomorrow morning.",
-    });
+    let detectedStatus = "in_progress";
+    const lowerText = randomTranscription.toLowerCase();
+    if (lowerText.includes("finished") || lowerText.includes("completed") || lowerText.includes("done")) {
+      detectedStatus = "completed";
+    } else if (lowerText.includes("blocked") || lowerText.includes("waiting") || lowerText.includes("stuck")) {
+      detectedStatus = "blocked";
+    } else if (lowerText.includes("progress") || lowerText.includes("working")) {
+      detectedStatus = "in_progress";
+    }
 
+    const parsed = {
+      taskId: selectedTask.id,
+      task: selectedTask.title,
+      status: detectedStatus,
+      notes: randomTranscription,
+    };
+
+    setParsedUpdate(parsed);
+    setEditableNotes(randomTranscription);
     setIsProcessing(false);
   };
 
   const handleConfirmUpdate = async () => {
-    if (!parsedUpdate) return;
+    if (!parsedUpdate || !selectedTask) return;
 
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    const newUpdate: TaskUpdate = {
-      id: Date.now().toString(),
-      taskName: parsedUpdate.task,
-      projectName: "Downtown Office Building",
-      status: parsedUpdate.status,
-      notes: parsedUpdate.notes,
-      createdAt: new Date().toISOString(),
-      fromVoice: true,
-    };
+    try {
+      await updateStatusMutation.mutateAsync({
+        taskId: parsedUpdate.taskId,
+        status: parsedUpdate.status,
+      });
 
-    setRecentUpdates((prev) => [newUpdate, ...prev]);
-    setTranscribedText("");
-    setParsedUpdate(null);
+      const newUpdate: TaskUpdate = {
+        id: Date.now().toString(),
+        taskId: parsedUpdate.taskId,
+        taskName: parsedUpdate.task,
+        projectName: selectedTask.projectName || "Unknown Project",
+        status: parsedUpdate.status,
+        notes: editableNotes || parsedUpdate.notes,
+        createdAt: new Date().toISOString(),
+        fromVoice: true,
+      };
 
-    Alert.alert("Task Updated", "Your voice update has been logged successfully!");
+      setRecentUpdates((prev) => [newUpdate, ...prev]);
+      setTranscribedText("");
+      setParsedUpdate(null);
+      setEditableNotes("");
+      setIsEditing(false);
+      setSelectedTask(null);
+
+      Alert.alert(
+        "Task Updated",
+        `"${parsedUpdate.task}" has been updated to ${parsedUpdate.status.replace("_", " ")}.`
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to update task. Please try again.");
+    }
   };
 
   const handleEditUpdate = () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    setIsEditing(true);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    if (parsedUpdate) {
+      setParsedUpdate({ ...parsedUpdate, status: newStatus });
+    }
+    setShowStatusPicker(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -195,6 +295,10 @@ export default function VoiceTaskScreen() {
     return date.toLocaleDateString();
   };
 
+  const formatStatusLabel = (status: string) => {
+    return status.replace("_", " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -205,13 +309,43 @@ export default function VoiceTaskScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <Card style={styles.taskSelectorCard}>
+          <View style={styles.sectionHeader}>
+            <Feather name="clipboard" size={18} color={accentColors.primary} />
+            <ThemedText style={styles.sectionTitle}>Select Task to Update</ThemedText>
+          </View>
+
+          <Pressable
+            style={[styles.taskSelector, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+            onPress={() => setShowTaskPicker(true)}
+            testID="task-selector"
+          >
+            {selectedTask ? (
+              <View style={styles.selectedTaskInfo}>
+                <ThemedText style={styles.selectedTaskName}>{selectedTask.title}</ThemedText>
+                <ThemedText style={styles.selectedTaskProject}>{selectedTask.projectName}</ThemedText>
+              </View>
+            ) : (
+              <ThemedText style={styles.taskSelectorPlaceholder}>Tap to select a task...</ThemedText>
+            )}
+            <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+          </Pressable>
+
+          {tasksLoading ? (
+            <ActivityIndicator size="small" color={accentColors.primary} style={{ marginTop: Spacing.sm }} />
+          ) : null}
+        </Card>
+
         <Card style={styles.voiceCard}>
           <View style={styles.voiceHeader}>
             <Feather name="mic" size={24} color={accentColors.primary} />
             <ThemedText style={styles.voiceTitle}>Voice-to-Task</ThemedText>
           </View>
           <ThemedText style={styles.voiceDescription}>
-            Tap and hold the microphone to record your task update. Speak naturally about what you completed, any issues, or materials needed.
+            {selectedTask 
+              ? `Recording update for: ${selectedTask.title}`
+              : "Select a task above, then tap and hold the microphone to record your update."
+            }
           </ThemedText>
 
           <View style={styles.microphoneContainer}>
@@ -222,24 +356,32 @@ export default function VoiceTaskScreen() {
             <Pressable
               style={[
                 styles.microphoneButton,
-                { backgroundColor: isRecording ? Colors.error : accentColors.primary },
+                { 
+                  backgroundColor: isRecording 
+                    ? Colors.error 
+                    : selectedTask 
+                      ? accentColors.primary 
+                      : theme.textSecondary 
+                },
               ]}
               onPressIn={handleStartRecording}
               onPressOut={handleStopRecording}
+              disabled={!selectedTask}
               testID="voice-record-button"
             >
               <Animated.View style={pulseStyle}>
-                <Feather
-                  name={isRecording ? "mic" : "mic"}
-                  size={40}
-                  color="#FFFFFF"
-                />
+                <Feather name="mic" size={40} color="#FFFFFF" />
               </Animated.View>
             </Pressable>
           </View>
 
           <ThemedText style={styles.micHint}>
-            {isRecording ? "Recording... Release to stop" : "Hold to record"}
+            {!selectedTask 
+              ? "Select a task first" 
+              : isRecording 
+                ? "Recording... Release to stop" 
+                : "Hold to record"
+            }
           </ThemedText>
 
           {isProcessing ? (
@@ -278,17 +420,33 @@ export default function VoiceTaskScreen() {
 
             <View style={styles.parsedField}>
               <ThemedText style={styles.parsedLabel}>Status:</ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(parsedUpdate.status)}20` }]}>
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor(parsedUpdate.status) }]} />
-                <Text style={[styles.statusText, { color: getStatusColor(parsedUpdate.status) }]}>
-                  {parsedUpdate.status.replace("_", " ").charAt(0).toUpperCase() + parsedUpdate.status.slice(1).replace("_", " ")}
-                </Text>
-              </View>
+              <Pressable onPress={() => setShowStatusPicker(true)}>
+                <View style={[styles.statusBadge, styles.statusEditable, { backgroundColor: `${getStatusColor(parsedUpdate.status)}20` }]}>
+                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(parsedUpdate.status) }]} />
+                  <Text style={[styles.statusText, { color: getStatusColor(parsedUpdate.status) }]}>
+                    {formatStatusLabel(parsedUpdate.status)}
+                  </Text>
+                  <Feather name="chevron-down" size={14} color={getStatusColor(parsedUpdate.status)} />
+                </View>
+              </Pressable>
             </View>
 
             <View style={styles.parsedField}>
               <ThemedText style={styles.parsedLabel}>Notes:</ThemedText>
-              <ThemedText style={styles.parsedValue}>{parsedUpdate.notes}</ThemedText>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.notesInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  value={editableNotes}
+                  onChangeText={setEditableNotes}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Edit your notes..."
+                  placeholderTextColor={theme.textSecondary}
+                  testID="notes-input"
+                />
+              ) : (
+                <ThemedText style={styles.parsedValue}>{editableNotes || parsedUpdate.notes}</ThemedText>
+              )}
             </View>
 
             <View style={styles.actionButtons}>
@@ -297,51 +455,134 @@ export default function VoiceTaskScreen() {
                 onPress={handleEditUpdate}
               >
                 <Feather name="edit-2" size={16} color={theme.text} />
-                <ThemedText style={styles.editButtonText}>Edit</ThemedText>
+                <ThemedText style={styles.editButtonText}>{isEditing ? "Editing..." : "Edit"}</ThemedText>
               </Pressable>
               <GradientButton
-                title="Confirm Update"
+                title={updateStatusMutation.isPending ? "Updating..." : "Confirm Update"}
                 onPress={handleConfirmUpdate}
                 variant="success"
                 size="medium"
                 icon="check"
+                disabled={updateStatusMutation.isPending}
                 style={styles.confirmButton}
               />
             </View>
           </Card>
         ) : null}
 
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeader}>
-            <Feather name="clock" size={18} color={theme.textSecondary} />
-            <ThemedText style={styles.sectionTitle}>Recent Voice Updates</ThemedText>
-          </View>
+        {recentUpdates.length > 0 ? (
+          <View style={styles.recentSection}>
+            <View style={styles.sectionHeader}>
+              <Feather name="clock" size={18} color={theme.textSecondary} />
+              <ThemedText style={styles.sectionTitle}>Recent Voice Updates</ThemedText>
+            </View>
 
-          {recentUpdates.map((update) => (
-            <Card key={update.id} style={styles.updateCard}>
-              <View style={styles.updateHeader}>
-                <View style={styles.updateTitleRow}>
-                  <ThemedText style={styles.updateTask}>{update.taskName}</ThemedText>
-                  <View style={[styles.voiceBadge, { backgroundColor: `${accentColors.primary}20` }]}>
-                    <Feather name="mic" size={12} color={accentColors.primary} />
+            {recentUpdates.map((update) => (
+              <Card key={update.id} style={styles.updateCard}>
+                <View style={styles.updateHeader}>
+                  <View style={styles.updateTitleRow}>
+                    <ThemedText style={styles.updateTask}>{update.taskName}</ThemedText>
+                    <View style={[styles.voiceBadge, { backgroundColor: `${accentColors.primary}20` }]}>
+                      <Feather name="mic" size={12} color={accentColors.primary} />
+                    </View>
                   </View>
+                  <ThemedText style={styles.updateProject}>{update.projectName}</ThemedText>
                 </View>
-                <ThemedText style={styles.updateProject}>{update.projectName}</ThemedText>
-              </View>
 
-              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(update.status)}20`, alignSelf: "flex-start" }]}>
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor(update.status) }]} />
-                <Text style={[styles.statusText, { color: getStatusColor(update.status) }]}>
-                  {update.status.replace("_", " ").charAt(0).toUpperCase() + update.status.slice(1).replace("_", " ")}
-                </Text>
-              </View>
+                <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(update.status)}20`, alignSelf: "flex-start" }]}>
+                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(update.status) }]} />
+                  <Text style={[styles.statusText, { color: getStatusColor(update.status) }]}>
+                    {formatStatusLabel(update.status)}
+                  </Text>
+                </View>
 
-              <ThemedText style={styles.updateNotes}>{update.notes}</ThemedText>
-              <ThemedText style={styles.updateTime}>{formatTime(update.createdAt)}</ThemedText>
-            </Card>
-          ))}
-        </View>
+                <ThemedText style={styles.updateNotes}>{update.notes}</ThemedText>
+                <ThemedText style={styles.updateTime}>{formatTime(update.createdAt)}</ThemedText>
+              </Card>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
+
+      <Modal
+        visible={showTaskPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowTaskPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Select Task</ThemedText>
+              <Pressable onPress={() => setShowTaskPicker(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={tasks}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[
+                    styles.taskOption,
+                    { borderBottomColor: theme.border },
+                    selectedTask?.id === item.id && { backgroundColor: `${accentColors.primary}15` },
+                  ]}
+                  onPress={() => {
+                    setSelectedTask(item);
+                    setShowTaskPicker(false);
+                    if (Platform.OS !== "web") {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  }}
+                >
+                  <View style={styles.taskOptionInfo}>
+                    <ThemedText style={styles.taskOptionTitle}>{item.title}</ThemedText>
+                    <ThemedText style={styles.taskOptionProject}>{item.projectName}</ThemedText>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
+                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                      {formatStatusLabel(item.status)}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyList}>
+                  <ThemedText style={styles.emptyText}>No tasks available</ThemedText>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showStatusPicker}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowStatusPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowStatusPicker(false)}>
+          <View style={[styles.statusPickerContent, { backgroundColor: theme.background }]}>
+            <ThemedText style={styles.statusPickerTitle}>Change Status</ThemedText>
+            {STATUS_OPTIONS.map((option) => (
+              <Pressable
+                key={option.value}
+                style={[
+                  styles.statusOption,
+                  parsedUpdate?.status === option.value && { backgroundColor: `${getStatusColor(option.value)}15` },
+                ]}
+                onPress={() => handleStatusChange(option.value)}
+              >
+                <View style={[styles.statusDot, { backgroundColor: getStatusColor(option.value) }]} />
+                <Text style={[styles.statusOptionText, { color: theme.text }]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -356,6 +597,33 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.md,
     gap: Spacing.md,
+  },
+  taskSelectorCard: {
+    padding: Spacing.md,
+  },
+  taskSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  selectedTaskInfo: {
+    flex: 1,
+  },
+  selectedTaskName: {
+    fontSize: FontSizes.md,
+    fontWeight: "600",
+  },
+  selectedTaskProject: {
+    fontSize: FontSizes.sm,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  taskSelectorPlaceholder: {
+    fontSize: FontSizes.md,
+    opacity: 0.5,
   },
   voiceCard: {
     padding: Spacing.lg,
@@ -472,6 +740,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     gap: 6,
   },
+  statusEditable: {
+    alignSelf: "flex-start",
+  },
   statusDot: {
     width: 8,
     height: 8,
@@ -480,6 +751,14 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: FontSizes.sm,
     fontWeight: "600",
+  },
+  notesInput: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    fontSize: FontSizes.md,
+    minHeight: 80,
+    textAlignVertical: "top",
   },
   actionButtons: {
     flexDirection: "row",
@@ -544,5 +823,83 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     opacity: 0.5,
     marginTop: Spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    maxHeight: "70%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  modalTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: "600",
+  },
+  taskOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  taskOptionInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  taskOptionTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: "500",
+  },
+  taskOptionProject: {
+    fontSize: FontSizes.sm,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  emptyList: {
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: FontSizes.md,
+    opacity: 0.5,
+  },
+  statusPickerContent: {
+    position: "absolute",
+    bottom: 100,
+    left: Spacing.md,
+    right: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  statusPickerTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+  },
+  statusOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  statusOptionText: {
+    fontSize: FontSizes.md,
   },
 });
