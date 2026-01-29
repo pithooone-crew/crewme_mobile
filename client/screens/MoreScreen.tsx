@@ -92,6 +92,17 @@ const featureGroups: FeatureGroup[] = [
     ],
   },
   {
+    id: "ai-crew-tools",
+    name: "AI Crew Tools",
+    icon: "mic",
+    color: "#00BFA5",
+    items: [
+      { id: "voice-task", name: "Voice-to-Task", icon: "mic", screen: "VoiceTask", color: "#00BFA5" },
+      { id: "photo-doc", name: "Photo Documentation", icon: "camera", screen: "PhotoDoc", color: Colors.primary },
+      { id: "ppe-reminder", name: "PPE Reminders", icon: "shield", screen: "PPEReminder", color: Colors.warning },
+    ],
+  },
+  {
     id: "gamification",
     name: "Gamification",
     icon: "award",

@@ -21,6 +21,9 @@ import SmartEquipmentListScreen from "@/screens/SmartEquipmentListScreen";
 import EquipmentDetailScreen from "@/screens/EquipmentDetailScreen";
 import FleetAlertsScreen from "@/screens/FleetAlertsScreen";
 import AIDispatchScreen from "@/screens/AIDispatchScreen";
+import VoiceTaskScreen from "@/screens/VoiceTaskScreen";
+import PhotoDocScreen from "@/screens/PhotoDocScreen";
+import PPEReminderScreen from "@/screens/PPEReminderScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -46,6 +49,9 @@ export type HomeStackParamList = {
   EquipmentDetail: { equipmentId: number };
   FleetAlerts: undefined;
   AIDispatch: undefined;
+  VoiceTask: undefined;
+  PhotoDoc: undefined;
+  PPEReminder: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -200,6 +206,27 @@ export default function HomeStackNavigator() {
         component={AIDispatchScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="VoiceTask"
+        component={VoiceTaskScreen}
+        options={{
+          headerTitle: "Voice-to-Task",
+        }}
+      />
+      <Stack.Screen
+        name="PhotoDoc"
+        component={PhotoDocScreen}
+        options={{
+          headerTitle: "Photo Documentation",
+        }}
+      />
+      <Stack.Screen
+        name="PPEReminder"
+        component={PPEReminderScreen}
+        options={{
+          headerTitle: "PPE Reminders",
         }}
       />
     </Stack.Navigator>
