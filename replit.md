@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **Animations:** React Native Reanimated
 - **Font:** Montserrat
 - **Key Features:**
-    - Consolidated feature menu (`MoreScreen`) with 8 logical groups.
+    - Consolidated feature menu (`MoreScreen`) with 9 logical groups including AI Crew Tools.
     - Tabbed `SettingsScreen` for appearance, notifications, usage, and data.
     - Dedicated `AIFeaturesScreen` with project selector for context-specific AI analysis.
     - `AttendanceScreen` for clock in/out, timesheet history, and estimated pay.
@@ -24,6 +24,10 @@ Preferred communication style: Simple, everyday language.
     - `AINotificationsScreen` for AI-powered replacement requests with accept/decline.
     - `AvailabilityPoolScreen` for workers to mark availability and skills.
     - Enhanced `DashboardScreen` with weekly hours and AI Alerts.
+    - **AI Crew Tools:**
+        - `VoiceTaskScreen`: Voice-to-Task with animated microphone, speech transcription, and AI parsing of task updates.
+        - `PhotoDocScreen`: AI Photo Documentation with camera/gallery integration, AI-generated progress notes, and tag detection.
+        - `PPEReminderScreen`: Smart PPE Reminders with task-based safety checklists, hazard warnings, and completion tracking for 5 task types (welding, electrical, heights, demolition, general).
     - **Theming:** Dark/light/system mode with persistence; specific dark theme colors (background #090c11, primary #0ea5e9, accent #f97316).
     - **Internationalization (i18n):** Multi-language support (12 languages including RTL for Arabic) using i18next, device language auto-detection, persistent preference, and auto-translate toggle for AI.
 
