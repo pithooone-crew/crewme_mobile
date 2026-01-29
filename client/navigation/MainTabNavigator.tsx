@@ -2,11 +2,11 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import TasksStackNavigator from "@/navigation/TasksStackNavigator";
+import AIStackNavigator from "@/navigation/AIStackNavigator";
 import MapStackNavigator from "@/navigation/MapStackNavigator";
-import ProgressStackNavigator from "@/navigation/ProgressStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { Colors } from "@/constants/theme";
@@ -14,8 +14,8 @@ import { Colors } from "@/constants/theme";
 export type MainTabParamList = {
   HomeTab: undefined;
   TasksTab: undefined;
+  AITab: undefined;
   MapTab: undefined;
-  ProgressTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -71,22 +71,25 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="AITab"
+        component={AIStackNavigator}
+        options={{
+          title: "AI Tools",
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={focused ? styles.aiIconActive : undefined}>
+              <Feather name="cpu" size={size} color={focused ? "#00BFA5" : color} />
+            </View>
+          ),
+          tabBarActiveTintColor: "#00BFA5",
+        }}
+      />
+      <Tab.Screen
         name="MapTab"
         component={MapStackNavigator}
         options={{
           title: "Map",
           tabBarIcon: ({ color, size }) => (
             <Feather name="map" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ProgressTab"
-        component={ProgressStackNavigator}
-        options={{
-          title: "Progress",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="trending-up" size={size} color={color} />
           ),
         }}
       />
@@ -103,3 +106,9 @@ export default function MainTabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  aiIconActive: {
+    transform: [{ scale: 1.1 }],
+  },
+});

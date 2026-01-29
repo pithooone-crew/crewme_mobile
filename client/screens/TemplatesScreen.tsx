@@ -660,7 +660,7 @@ export default function TemplatesScreen() {
         onRequestClose={() => setShowApplyModal(false)}
       >
         <View style={styles.applyModalOverlay}>
-          <View style={[styles.applyModalContent, { backgroundColor: theme.background }]}>
+          <View style={[styles.applyModalContent, { backgroundColor: theme.backgroundDefault }]}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Create Project</ThemedText>
               <Pressable onPress={() => setShowApplyModal(false)} style={styles.closeButton}>
