@@ -33,6 +33,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { GradientButton } from "@/components/ui";
 import { api } from "@/lib/api";
+import { getApiUrl } from "@/lib/query-client";
 
 interface Task {
   id: string;
@@ -44,12 +45,6 @@ interface Task {
   projectName?: string;
   assignedTo?: string;
   dueDate?: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  status: string;
 }
 
 interface TaskUpdate {
@@ -79,10 +74,13 @@ export default function VoiceTaskScreen() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState("");
   const [transcribedText, setTranscribedText] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskPicker, setShowTaskPicker] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [aiConfidence, setAiConfidence] = useState<"high" | "medium" | "low" | null>(null);
+  const [aiReasoning, setAiReasoning] = useState("");
   const [parsedUpdate, setParsedUpdate] = useState<{
     taskId: string;
     task: string;
@@ -101,6 +99,7 @@ export default function VoiceTaskScreen() {
     { id: "2", title: "Electrical rough-in - Floor 3", status: "pending", priority: "medium", projectName: "Downtown Office Building" },
     { id: "3", title: "Plumbing fixtures - Restrooms", status: "in_progress", priority: "high", projectName: "Riverside Apartments" },
     { id: "4", title: "HVAC ductwork - Floor 2", status: "pending", priority: "low", projectName: "Downtown Office Building" },
+    { id: "5", title: "Paint exterior walls", status: "pending", priority: "medium", projectName: "Riverside Apartments" },
   ];
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
@@ -152,64 +151,135 @@ export default function VoiceTaskScreen() {
     opacity: waveOpacity.value,
   }));
 
-  const handleStartRecording = async () => {
-    if (!selectedTask) {
-      Alert.alert("Select a Task", "Please select a task first before recording your update.");
-      return;
-    }
+  const parseVoiceWithAI = async (transcription: string) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/api/voice-task/parse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcription,
+          availableTasks: tasks,
+        }),
+      });
 
+      if (!response.ok) {
+        throw new Error("Failed to parse voice update");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("AI parsing error:", error);
+      return { needsManualSelection: true };
+    }
+  };
+
+  const handleStartRecording = async () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setIsRecording(true);
     setTranscribedText("");
     setParsedUpdate(null);
+    setSelectedTask(null);
     setIsEditing(false);
+    setAiConfidence(null);
+    setAiReasoning("");
   };
 
   const handleStopRecording = async () => {
-    if (!selectedTask) return;
-
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setIsRecording(false);
     setIsProcessing(true);
 
+    // Simulate voice transcription
+    setProcessingStep("Transcribing your voice...");
     await new Promise((r) => setTimeout(r, 1500));
 
+    // Mock transcription examples that mention specific tasks/projects
     const mockTranscriptions = [
-      "Finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.",
-      "Work is progressing well. About 75% complete. Need additional materials for the final section.",
-      "Task is blocked. Waiting for electrical inspection before we can continue.",
-      "Completed all required work. Ready for quality inspection.",
+      "I just finished installing the drywall in room 204. All panels are up and ready for taping tomorrow morning.",
+      "Working on the electrical rough-in on floor 3. About 75% complete, need more 12-gauge wire to finish.",
+      "The plumbing fixtures in the restrooms are blocked. Waiting for inspection approval before we can continue.",
+      "HVAC ductwork on floor 2 is progressing well. Should be done by end of day.",
+      "Started painting the exterior walls at Riverside. Weather is good, making great progress.",
     ];
 
     const randomTranscription = mockTranscriptions[Math.floor(Math.random() * mockTranscriptions.length)];
     setTranscribedText(randomTranscription);
 
-    await new Promise((r) => setTimeout(r, 1000));
+    // Use AI to identify the task
+    setProcessingStep("AI identifying task...");
+    await new Promise((r) => setTimeout(r, 500));
 
-    let detectedStatus = "in_progress";
-    const lowerText = randomTranscription.toLowerCase();
-    if (lowerText.includes("finished") || lowerText.includes("completed") || lowerText.includes("done")) {
-      detectedStatus = "completed";
-    } else if (lowerText.includes("blocked") || lowerText.includes("waiting") || lowerText.includes("stuck")) {
-      detectedStatus = "blocked";
-    } else if (lowerText.includes("progress") || lowerText.includes("working")) {
-      detectedStatus = "in_progress";
+    const aiResult = await parseVoiceWithAI(randomTranscription);
+
+    if (aiResult.needsManualSelection) {
+      // AI couldn't identify the task - ask user to select
+      setIsProcessing(false);
+      setAiConfidence("low");
+      setShowTaskPicker(true);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      Alert.alert(
+        "Select Task",
+        "I couldn't identify which task you're updating. Please select it from the list.",
+        [{ text: "OK" }]
+      );
+    } else {
+      // AI identified the task
+      setSelectedTask(aiResult.matchedTask);
+      setAiConfidence(aiResult.confidence);
+      setAiReasoning(aiResult.reasoning);
+      
+      const parsed = {
+        taskId: aiResult.matchedTask.id,
+        task: aiResult.matchedTask.title,
+        status: aiResult.suggestedStatus,
+        notes: aiResult.extractedNotes,
+      };
+
+      setParsedUpdate(parsed);
+      setEditableNotes(aiResult.extractedNotes);
+      setIsProcessing(false);
+
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }
+  };
+
+  const handleTaskSelectedManually = (task: Task) => {
+    setSelectedTask(task);
+    setShowTaskPicker(false);
+
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    const parsed = {
-      taskId: selectedTask.id,
-      task: selectedTask.title,
-      status: detectedStatus,
-      notes: randomTranscription,
-    };
+    // Now parse the transcription with the manually selected task
+    if (transcribedText) {
+      let detectedStatus = "in_progress";
+      const lowerText = transcribedText.toLowerCase();
+      if (lowerText.includes("finished") || lowerText.includes("completed") || lowerText.includes("done")) {
+        detectedStatus = "completed";
+      } else if (lowerText.includes("blocked") || lowerText.includes("waiting") || lowerText.includes("stuck")) {
+        detectedStatus = "blocked";
+      }
 
-    setParsedUpdate(parsed);
-    setEditableNotes(randomTranscription);
-    setIsProcessing(false);
+      const parsed = {
+        taskId: task.id,
+        task: task.title,
+        status: detectedStatus,
+        notes: transcribedText,
+      };
+
+      setParsedUpdate(parsed);
+      setEditableNotes(transcribedText);
+      setAiConfidence("low");
+    }
   };
 
   const handleConfirmUpdate = async () => {
@@ -242,6 +312,8 @@ export default function VoiceTaskScreen() {
       setEditableNotes("");
       setIsEditing(false);
       setSelectedTask(null);
+      setAiConfidence(null);
+      setAiReasoning("");
 
       Alert.alert(
         "Task Updated",
@@ -259,6 +331,13 @@ export default function VoiceTaskScreen() {
     setIsEditing(true);
   };
 
+  const handleChangeTask = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowTaskPicker(true);
+  };
+
   const handleStatusChange = (newStatus: string) => {
     if (parsedUpdate) {
       setParsedUpdate({ ...parsedUpdate, status: newStatus });
@@ -273,6 +352,19 @@ export default function VoiceTaskScreen() {
       case "in_progress":
         return accentColors.primary;
       case "blocked":
+        return Colors.error;
+      default:
+        return theme.textSecondary;
+    }
+  };
+
+  const getConfidenceColor = (confidence: string | null) => {
+    switch (confidence) {
+      case "high":
+        return Colors.success;
+      case "medium":
+        return Colors.warning;
+      case "low":
         return Colors.error;
       default:
         return theme.textSecondary;
@@ -309,43 +401,13 @@ export default function VoiceTaskScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.taskSelectorCard}>
-          <View style={styles.sectionHeader}>
-            <Feather name="clipboard" size={18} color={accentColors.primary} />
-            <ThemedText style={styles.sectionTitle}>Select Task to Update</ThemedText>
-          </View>
-
-          <Pressable
-            style={[styles.taskSelector, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-            onPress={() => setShowTaskPicker(true)}
-            testID="task-selector"
-          >
-            {selectedTask ? (
-              <View style={styles.selectedTaskInfo}>
-                <ThemedText style={styles.selectedTaskName}>{selectedTask.title}</ThemedText>
-                <ThemedText style={styles.selectedTaskProject}>{selectedTask.projectName}</ThemedText>
-              </View>
-            ) : (
-              <ThemedText style={styles.taskSelectorPlaceholder}>Tap to select a task...</ThemedText>
-            )}
-            <Feather name="chevron-down" size={20} color={theme.textSecondary} />
-          </Pressable>
-
-          {tasksLoading ? (
-            <ActivityIndicator size="small" color={accentColors.primary} style={{ marginTop: Spacing.sm }} />
-          ) : null}
-        </Card>
-
         <Card style={styles.voiceCard}>
           <View style={styles.voiceHeader}>
             <Feather name="mic" size={24} color={accentColors.primary} />
             <ThemedText style={styles.voiceTitle}>Voice-to-Task</ThemedText>
           </View>
           <ThemedText style={styles.voiceDescription}>
-            {selectedTask 
-              ? `Recording update for: ${selectedTask.title}`
-              : "Select a task above, then tap and hold the microphone to record your update."
-            }
+            Just speak naturally about your work. AI will identify which task you're updating and parse your notes automatically.
           </ThemedText>
 
           <View style={styles.microphoneContainer}>
@@ -356,17 +418,10 @@ export default function VoiceTaskScreen() {
             <Pressable
               style={[
                 styles.microphoneButton,
-                { 
-                  backgroundColor: isRecording 
-                    ? Colors.error 
-                    : selectedTask 
-                      ? accentColors.primary 
-                      : theme.textSecondary 
-                },
+                { backgroundColor: isRecording ? Colors.error : accentColors.primary },
               ]}
               onPressIn={handleStartRecording}
               onPressOut={handleStopRecording}
-              disabled={!selectedTask}
               testID="voice-record-button"
             >
               <Animated.View style={pulseStyle}>
@@ -376,19 +431,14 @@ export default function VoiceTaskScreen() {
           </View>
 
           <ThemedText style={styles.micHint}>
-            {!selectedTask 
-              ? "Select a task first" 
-              : isRecording 
-                ? "Recording... Release to stop" 
-                : "Hold to record"
-            }
+            {isRecording ? "Recording... Release to stop" : "Hold to record"}
           </ThemedText>
 
           {isProcessing ? (
             <View style={styles.processingContainer}>
               <ActivityIndicator size="small" color={accentColors.primary} />
               <ThemedText style={styles.processingText}>
-                Processing your voice...
+                {processingStep}
               </ThemedText>
             </View>
           ) : null}
@@ -398,7 +448,7 @@ export default function VoiceTaskScreen() {
           <Card style={styles.transcriptionCard}>
             <View style={styles.sectionHeader}>
               <Feather name="message-circle" size={18} color={accentColors.primary} />
-              <ThemedText style={styles.sectionTitle}>Transcription</ThemedText>
+              <ThemedText style={styles.sectionTitle}>What You Said</ThemedText>
             </View>
             <ThemedText style={styles.transcriptionText}>
               "{transcribedText}"
@@ -406,20 +456,40 @@ export default function VoiceTaskScreen() {
           </Card>
         ) : null}
 
-        {parsedUpdate ? (
+        {parsedUpdate && selectedTask ? (
           <Card style={styles.parsedCard}>
             <View style={styles.sectionHeader}>
-              <Feather name="check-circle" size={18} color={Colors.success} />
-              <ThemedText style={styles.sectionTitle}>Parsed Update</ThemedText>
+              <Feather name="cpu" size={18} color={Colors.success} />
+              <ThemedText style={styles.sectionTitle}>AI Parsed Update</ThemedText>
+              {aiConfidence ? (
+                <View style={[styles.confidenceBadge, { backgroundColor: `${getConfidenceColor(aiConfidence)}20` }]}>
+                  <Text style={[styles.confidenceText, { color: getConfidenceColor(aiConfidence) }]}>
+                    {aiConfidence.toUpperCase()} confidence
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
+            {aiReasoning ? (
+              <ThemedText style={styles.aiReasoning}>
+                <Feather name="info" size={12} color={theme.textSecondary} /> {aiReasoning}
+              </ThemedText>
+            ) : null}
+
             <View style={styles.parsedField}>
-              <ThemedText style={styles.parsedLabel}>Task:</ThemedText>
+              <View style={styles.parsedLabelRow}>
+                <ThemedText style={styles.parsedLabel}>Identified Task:</ThemedText>
+                <Pressable onPress={handleChangeTask} style={styles.changeButton}>
+                  <Feather name="edit-3" size={12} color={accentColors.primary} />
+                  <Text style={[styles.changeButtonText, { color: accentColors.primary }]}>Change</Text>
+                </Pressable>
+              </View>
               <ThemedText style={styles.parsedValue}>{parsedUpdate.task}</ThemedText>
+              <ThemedText style={styles.parsedSubValue}>{selectedTask.projectName}</ThemedText>
             </View>
 
             <View style={styles.parsedField}>
-              <ThemedText style={styles.parsedLabel}>Status:</ThemedText>
+              <ThemedText style={styles.parsedLabel}>New Status:</ThemedText>
               <Pressable onPress={() => setShowStatusPicker(true)}>
                 <View style={[styles.statusBadge, styles.statusEditable, { backgroundColor: `${getStatusColor(parsedUpdate.status)}20` }]}>
                   <View style={[styles.statusDot, { backgroundColor: getStatusColor(parsedUpdate.status) }]} />
@@ -502,6 +572,27 @@ export default function VoiceTaskScreen() {
             ))}
           </View>
         ) : null}
+
+        <Card style={styles.tipsCard}>
+          <View style={styles.sectionHeader}>
+            <Feather name="zap" size={18} color={Colors.warning} />
+            <ThemedText style={styles.sectionTitle}>Tips for Better Recognition</ThemedText>
+          </View>
+          <View style={styles.tipsList}>
+            <View style={styles.tipItem}>
+              <Feather name="check" size={14} color={Colors.success} />
+              <ThemedText style={styles.tipText}>Mention the task or location (e.g., "drywall in room 204")</ThemedText>
+            </View>
+            <View style={styles.tipItem}>
+              <Feather name="check" size={14} color={Colors.success} />
+              <ThemedText style={styles.tipText}>Say "finished" or "completed" for completed work</ThemedText>
+            </View>
+            <View style={styles.tipItem}>
+              <Feather name="check" size={14} color={Colors.success} />
+              <ThemedText style={styles.tipText}>Mention "blocked" or "waiting" if you're stuck</ThemedText>
+            </View>
+          </View>
+        </Card>
       </ScrollView>
 
       <Modal
@@ -518,6 +609,9 @@ export default function VoiceTaskScreen() {
                 <Feather name="x" size={24} color={theme.text} />
               </Pressable>
             </View>
+            <ThemedText style={styles.modalSubtitle}>
+              Which task are you updating?
+            </ThemedText>
             <FlatList
               data={tasks}
               keyExtractor={(item) => item.id}
@@ -528,13 +622,7 @@ export default function VoiceTaskScreen() {
                     { borderBottomColor: theme.border },
                     selectedTask?.id === item.id && { backgroundColor: `${accentColors.primary}15` },
                   ]}
-                  onPress={() => {
-                    setSelectedTask(item);
-                    setShowTaskPicker(false);
-                    if (Platform.OS !== "web") {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                  }}
+                  onPress={() => handleTaskSelectedManually(item)}
                 >
                   <View style={styles.taskOptionInfo}>
                     <ThemedText style={styles.taskOptionTitle}>{item.title}</ThemedText>
@@ -597,33 +685,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.md,
     gap: Spacing.md,
-  },
-  taskSelectorCard: {
-    padding: Spacing.md,
-  },
-  taskSelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
-  selectedTaskInfo: {
-    flex: 1,
-  },
-  selectedTaskName: {
-    fontSize: FontSizes.md,
-    fontWeight: "600",
-  },
-  selectedTaskProject: {
-    fontSize: FontSizes.sm,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-  taskSelectorPlaceholder: {
-    fontSize: FontSizes.md,
-    opacity: 0.5,
   },
   voiceCard: {
     padding: Spacing.lg,
@@ -705,6 +766,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
+    flexWrap: "wrap",
   },
   sectionTitle: {
     fontSize: FontSizes.md,
@@ -719,18 +781,54 @@ const styles = StyleSheet.create({
   parsedCard: {
     padding: Spacing.md,
   },
+  confidenceBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    marginLeft: "auto",
+  },
+  confidenceText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  aiReasoning: {
+    fontSize: FontSizes.xs,
+    opacity: 0.7,
+    fontStyle: "italic",
+    marginBottom: Spacing.md,
+    lineHeight: 18,
+  },
   parsedField: {
     marginBottom: Spacing.sm,
+  },
+  parsedLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
   },
   parsedLabel: {
     fontSize: FontSizes.xs,
     fontWeight: "600",
     opacity: 0.6,
-    marginBottom: 4,
     textTransform: "uppercase",
+  },
+  changeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  changeButtonText: {
+    fontSize: FontSizes.xs,
+    fontWeight: "600",
   },
   parsedValue: {
     fontSize: FontSizes.md,
+  },
+  parsedSubValue: {
+    fontSize: FontSizes.sm,
+    opacity: 0.6,
+    marginTop: 2,
   },
   statusBadge: {
     flexDirection: "row",
@@ -824,6 +922,23 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     marginTop: Spacing.sm,
   },
+  tipsCard: {
+    padding: Spacing.md,
+  },
+  tipsList: {
+    gap: Spacing.sm,
+  },
+  tipItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+  },
+  tipText: {
+    fontSize: FontSizes.sm,
+    flex: 1,
+    opacity: 0.8,
+    lineHeight: 20,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -845,6 +960,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: FontSizes.lg,
     fontWeight: "600",
+  },
+  modalSubtitle: {
+    fontSize: FontSizes.sm,
+    opacity: 0.6,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   taskOption: {
     flexDirection: "row",

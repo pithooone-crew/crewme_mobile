@@ -44,6 +44,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Voice-to-Task: Parse transcription and identify project/task
+  app.post("/api/voice-task/parse", async (req, res) => {
+    try {
+      const { transcription, availableTasks } = req.body;
+
+      if (!transcription) {
+        return res.status(400).json({ error: "Transcription is required" });
+      }
+
+      const taskListForAI = (availableTasks || []).map((t: any, i: number) => 
+        `${i + 1}. Task: "${t.title}" (Project: ${t.projectName || "Unknown"}, Current Status: ${t.status})`
+      ).join("\n");
+
+      const systemPrompt = `You are an AI assistant for a construction crew app. Your job is to analyze a worker's voice update and identify:
+1. Which task they are talking about (from the provided list)
+2. What status the task should be updated to (pending, in_progress, completed, or blocked)
+3. Extract key notes from their update
+
+Available tasks:
+${taskListForAI || "No tasks available"}
+
+Respond in JSON format:
+{
+  "matchedTaskIndex": <number or null if unclear>,
+  "confidence": "high" | "medium" | "low",
+  "suggestedStatus": "pending" | "in_progress" | "completed" | "blocked",
+  "extractedNotes": "<summary of worker's update>",
+  "reasoning": "<brief explanation of why this task was matched>"
+}
+
+If you cannot confidently identify the task (confidence is "low"), set matchedTaskIndex to null.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Worker's voice update: "${transcription}"` },
+        ],
+        max_tokens: 500,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+
+      // If we have a matched task index and it's valid, include the matched task
+      let matchedTask = null;
+      if (parsed.matchedTaskIndex !== null && 
+          parsed.matchedTaskIndex >= 0 && 
+          availableTasks && 
+          parsed.matchedTaskIndex < availableTasks.length) {
+        matchedTask = availableTasks[parsed.matchedTaskIndex];
+      }
+
+      res.json({
+        success: true,
+        matchedTask,
+        confidence: parsed.confidence || "low",
+        suggestedStatus: parsed.suggestedStatus || "in_progress",
+        extractedNotes: parsed.extractedNotes || transcription,
+        reasoning: parsed.reasoning || "",
+        needsManualSelection: parsed.confidence === "low" || !matchedTask,
+      });
+    } catch (error) {
+      console.error("Error parsing voice task:", error);
+      res.status(500).json({ 
+        error: "Failed to parse voice update",
+        needsManualSelection: true,
+      });
+    }
+  });
+
   // Read receipt endpoint - marks message as read and generates AI acknowledgment
   app.post("/api/crew-messages/:id/read-receipt", async (req, res) => {
     try {
