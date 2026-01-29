@@ -53,8 +53,24 @@ Preferred communication style: Simple, everyday language.
 ### Key Design Patterns
 - **Path Aliases:** `@/` for client, `@shared/` for shared code.
 - **Error Handling:** `ErrorBoundary` component.
-- **Loading States:** Skeleton components.
-- **Haptic Feedback:** For tactile interactions.
+- **Loading States:** Skeleton components with shimmer effects (`ShimmerLoader`).
+- **Haptic Feedback:** For tactile interactions (Light/Medium/Heavy impact styles).
+
+### Modern UI Components (`client/components/ui/`)
+- **GlassCard:** Glassmorphism cards with blur effects (BlurView on native, CSS backdrop-filter on web).
+- **GradientButton:** Gradient buttons with size variants (small/medium/large) and type variants (primary/secondary/success/warning/danger), includes haptic feedback.
+- **AnimatedProgressRing:** Circular animated progress indicators using SVG, used for health/skill visualizations.
+- **ShimmerLoader:** Skeleton loading with animated shimmer effect, supports custom sizing and border radius.
+- **PressableScale:** Animated press feedback with scale-down animation using React Native Reanimated.
+- **FloatingActionButton:** Expandable FAB with multiple action items, includes rotation animation.
+- **StatusPill:** Modern status badges with optional icons and semantic variants.
+- **BottomSheet:** Draggable modal sheet with gesture support, snap points, and backdrop.
+- **AnimatedBadge:** Notification badges with pop-in animation.
+
+### Dynamic Accent Color Theming
+- **Colors:** blue, orange, green, purple, pink, teal.
+- **Storage:** Persisted to AsyncStorage with key `@crewme_accent_color`.
+- **Access:** Via `useTheme()` hook: `accentColor`, `setAccentColor`, `accentColors.primary/primaryDark`.
 
 ## External Dependencies
 
