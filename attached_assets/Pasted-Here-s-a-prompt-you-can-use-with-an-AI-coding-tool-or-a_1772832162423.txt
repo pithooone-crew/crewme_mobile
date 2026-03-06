@@ -1,0 +1,43 @@
+Here's a prompt you can use (with an AI coding tool or as a reference) to bring the mobile app in line with the web app:
+
+Prompt to make the mobile app consistent with the web app:
+
+Update the CrewMe React Native mobile app (crewme_rn/) to be consistent with the web app. The mobile app should match the web app in features, design language, and API integration. Here's what needs to happen:
+
+Design Consistency:
+
+Match the web app's industrial construction theme: dark mode support, the same primary/accent color palette (amber/orange primary, warm neutrals), and the same font hierarchy
+Use the same icon concepts from lucide (find React Native equivalents via react-native-vector-icons or similar)
+Apply consistent border radii (small/medium, no overly rounded corners), card styling, and spacing rhythm from the web app
+Missing Screens to Add:
+
+Projects list and project detail
+Crew management and crew member profiles
+AI Team Builder (request optimal team via natural language)
+AI Daily Briefing (morning summary view)
+Crew Chat / Messaging
+QR Code Check-in for attendance
+Equipment tracking list
+Map view with crew/equipment locations
+Notifications center
+Schedule view with task assignments
+AI Building Code Compliance (chat-style Q&A)
+AI Blueprint Takeoff (camera/photo upload for quantity extraction)
+Navigation:
+
+Bottom tab navigation: Dashboard, Projects, Schedule, Chat, Profile
+Stack navigators within each tab for detail screens
+Drawer or settings gear for: Gamification, Skill Trees, Rewards Store, Star Performer, AI tools
+API Integration:
+
+Point all API calls to the same Express backend endpoints the web app uses (base URL configurable via env)
+Use the same authentication flow (session-based or token-based)
+Match the same data models from shared/schema.ts
+Key Behaviors:
+
+Offline support with local caching (AsyncStorage or MMKV)
+Pull-to-refresh on all list screens
+Push notifications for task assignments, chat messages, and AI alerts
+Camera integration for QR scanning and blueprint photo capture
+GPS location sharing for crew tracking
+The web app's API routes are defined in server/routes.ts and the data models are in shared/schema.ts. Use these as the source of truth.
