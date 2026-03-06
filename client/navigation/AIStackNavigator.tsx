@@ -7,6 +7,10 @@ import PPEReminderScreen from "@/screens/PPEReminderScreen";
 import AINotificationsScreen from "@/screens/AINotificationsScreen";
 import AvailabilityPoolScreen from "@/screens/AvailabilityPoolScreen";
 import AIDispatchScreen from "@/screens/AIDispatchScreen";
+import AITeamBuilderScreen from "@/screens/AITeamBuilderScreen";
+import AIDailyBriefingScreen from "@/screens/AIDailyBriefingScreen";
+import AIBuildingCodeScreen from "@/screens/AIBuildingCodeScreen";
+import AIBlueprintTakeoffScreen from "@/screens/AIBlueprintTakeoffScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -18,6 +22,10 @@ export type AIStackParamList = {
   AISelfHealing: undefined;
   AIAvailability: undefined;
   AIEquipmentDispatch: undefined;
+  AITeamBuilder: undefined;
+  AIDailyBriefing: undefined;
+  AIBuildingCode: undefined;
+  AIBlueprintTakeoff: undefined;
 };
 
 const Stack = createNativeStackNavigator<AIStackParamList>();
@@ -74,6 +82,34 @@ export default function AIStackNavigator() {
         component={AIDispatchScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="AITeamBuilder"
+        component={AITeamBuilderScreen}
+        options={{
+          headerTitle: "AI Team Builder",
+        }}
+      />
+      <Stack.Screen
+        name="AIDailyBriefing"
+        component={AIDailyBriefingScreen}
+        options={{
+          headerTitle: "Daily Briefing",
+        }}
+      />
+      <Stack.Screen
+        name="AIBuildingCode"
+        component={AIBuildingCodeScreen}
+        options={{
+          headerTitle: "Building Code Q&A",
+        }}
+      />
+      <Stack.Screen
+        name="AIBlueprintTakeoff"
+        component={AIBlueprintTakeoffScreen}
+        options={{
+          headerTitle: "Blueprint Takeoff",
         }}
       />
     </Stack.Navigator>

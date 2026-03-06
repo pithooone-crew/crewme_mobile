@@ -31,12 +31,51 @@ interface AIFeature {
 
 const aiFeatures: AIFeature[] = [
   {
+    id: "daily-briefing",
+    name: "Daily Briefing",
+    description: "AI-powered morning summary with weather, tasks & safety",
+    icon: "sunrise",
+    screen: "AIDailyBriefing",
+    gradient: ["#FF6B35", "#F7931E"],
+    isNew: true,
+    isPrimary: true,
+  },
+  {
+    id: "team-builder",
+    name: "AI Team Builder",
+    description: "Build optimal crews with natural language requests",
+    icon: "users",
+    screen: "AITeamBuilder",
+    gradient: ["#6C63FF", "#4834D4"],
+    isNew: true,
+    isPrimary: true,
+  },
+  {
     id: "voice-task",
     name: "Voice-to-Task",
     description: "Update tasks hands-free with voice commands",
     icon: "mic",
     screen: "AIVoiceTask",
     gradient: ["#00BFA5", "#00897B"],
+    isPrimary: true,
+  },
+  {
+    id: "building-code",
+    name: "Building Code Q&A",
+    description: "Ask building code questions and get instant answers",
+    icon: "book-open",
+    screen: "AIBuildingCode",
+    gradient: ["#E91E63", "#C2185B"],
+    isNew: true,
+    isPrimary: true,
+  },
+  {
+    id: "blueprint-takeoff",
+    name: "Blueprint Takeoff",
+    description: "Extract quantities and costs from blueprint photos",
+    icon: "layers",
+    screen: "AIBlueprintTakeoff",
+    gradient: ["#00ACC1", "#00838F"],
     isNew: true,
     isPrimary: true,
   },
@@ -47,7 +86,6 @@ const aiFeatures: AIFeature[] = [
     icon: "camera",
     screen: "AIPhotoDoc",
     gradient: ["#0288D1", "#01579B"],
-    isPrimary: true,
   },
   {
     id: "ppe-reminder",
@@ -56,7 +94,6 @@ const aiFeatures: AIFeature[] = [
     icon: "shield",
     screen: "AIPPEReminder",
     gradient: ["#FF9800", "#F57C00"],
-    isPrimary: true,
   },
   {
     id: "self-healing",
@@ -142,7 +179,7 @@ export default function AIHubScreen() {
                   </View>
                 ) : null}
                 <View style={styles.primaryIconContainer}>
-                  <Feather name={feature.icon} size={32} color="#FFFFFF" />
+                  <Feather name={feature.icon} size={24} color="#FFFFFF" />
                 </View>
                 <ThemedText style={styles.primaryName}>{feature.name}</ThemedText>
                 <ThemedText style={styles.primaryDescription}>
@@ -233,7 +270,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   primaryCard: {
-    width: "100%",
+    width: "48%",
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
     shadowColor: "#000",
@@ -243,8 +280,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradient: {
-    padding: Spacing.lg,
-    minHeight: 140,
+    padding: Spacing.md,
+    minHeight: 150,
+    justifyContent: "space-between",
   },
   newBadge: {
     position: "absolute",
@@ -261,24 +299,24 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   primaryIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   primaryName: {
-    fontSize: FontSizes.lg,
+    fontSize: FontSizes.md,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   primaryDescription: {
-    fontSize: FontSizes.sm,
+    fontSize: FontSizes.xs,
     color: "rgba(255,255,255,0.85)",
-    lineHeight: 18,
+    lineHeight: 16,
   },
   otherList: {
     gap: Spacing.sm,

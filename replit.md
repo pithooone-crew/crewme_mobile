@@ -28,6 +28,11 @@ Preferred communication style: Simple, everyday language.
         - `VoiceTaskScreen`: Voice-to-Task with animated microphone, speech transcription, and AI parsing of task updates.
         - `PhotoDocScreen`: AI Photo Documentation with camera/gallery integration, AI-generated progress notes, and tag detection.
         - `PPEReminderScreen`: Smart PPE Reminders with task-based safety checklists, hazard warnings, and completion tracking for 5 task types (welding, electrical, heights, demolition, general).
+        - `AITeamBuilderScreen`: Natural language team building - describe needs and AI suggests optimal crew composition with skills, ratings, and reasoning.
+        - `AIDailyBriefingScreen`: Morning briefing with weather, crew status, today's tasks, safety alerts, equipment status, and AI insights.
+        - `AIBuildingCodeScreen`: Chat-style Q&A for building code compliance using AI (IBC, OSHA, NEC, ADA, etc.).
+        - `AIBlueprintTakeoffScreen`: Camera/gallery photo upload for AI-powered quantity extraction from blueprints with material categories and cost estimates.
+    - **Offline Caching:** AsyncStorage-based caching layer (`client/lib/offline-cache.ts`) with TTL support, automatic fallback to cached data when offline.
     - **Theming:** Dark/light/system mode with persistence; specific dark theme colors (background #090c11, primary #0ea5e9, accent #f97316).
     - **Internationalization (i18n):** Multi-language support (12 languages including RTL for Arabic) using i18next, device language auto-detection, persistent preference, and auto-translate toggle for AI.
 

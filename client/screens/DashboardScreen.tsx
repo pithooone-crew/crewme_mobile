@@ -380,6 +380,25 @@ export default function DashboardScreen() {
         </Pressable>
       </View>
 
+      <Pressable onPress={() => navigation.navigate("AIDailyBriefing")} testID="button-daily-briefing">
+        <Card style={styles.briefingCard}>
+          <View style={styles.briefingRow}>
+            <View style={[styles.briefingIcon, { backgroundColor: "#FF6B35" + "20" }]}>
+              <Feather name="sunrise" size={22} color="#FF6B35" />
+            </View>
+            <View style={styles.briefingInfo}>
+              <ThemedText type="h4">Daily Briefing</ThemedText>
+              <ThemedText style={[styles.briefingSubtext, { color: theme.textSecondary }]}>
+                Weather, tasks, crew status & safety alerts
+              </ThemedText>
+            </View>
+            <View style={styles.briefingBadge}>
+              <ThemedText style={styles.briefingBadgeText}>AI</ThemedText>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+
       <View style={styles.statsRow}>
         <Card style={styles.statCard}>
           <Feather name="check-circle" size={24} color={Colors.success} />
@@ -696,5 +715,39 @@ const styles = StyleSheet.create({
   },
   weeklyHoursTarget: {
     fontSize: 12,
+  },
+  briefingCard: {
+    marginBottom: Spacing.lg,
+    padding: Spacing.md,
+  },
+  briefingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  briefingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  briefingInfo: {
+    flex: 1,
+  },
+  briefingSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  briefingBadge: {
+    backgroundColor: "#FF6B35",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  briefingBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });

@@ -1177,6 +1177,275 @@ If you cannot confidently identify the task (confidence is "low"), set matchedTa
     }
   });
 
+  // POST /api/ai/team-builder - AI-powered team building from natural language
+  app.post("/api/ai/team-builder", async (req, res) => {
+    try {
+      const { request: teamRequest, projectId } = req.body;
+
+      if (!teamRequest) {
+        return res.status(400).json({ error: "Team request is required" });
+      }
+
+      const systemPrompt = `You are an AI construction team builder. Analyze the natural language request and suggest an optimal team composition.
+
+Return JSON with this structure:
+{
+  "teamName": "string - a name for this team",
+  "summary": "string - brief summary of what this team will do",
+  "members": [
+    {
+      "role": "string - job title/role",
+      "name": "string - generate a realistic name",
+      "skills": ["array of relevant skills"],
+      "experience": "string - years of experience",
+      "rating": number between 3.5 and 5.0,
+      "availability": "available" | "partial" | "busy",
+      "matchScore": number between 70 and 100,
+      "reasoning": "string - why this person is a good fit"
+    }
+  ],
+  "totalCost": "string - estimated daily team cost",
+  "estimatedDuration": "string - how long the work will take",
+  "recommendations": ["array of additional suggestions"],
+  "warnings": ["array of potential issues to watch"]
+}
+
+Generate 3-8 team members based on the request. Make the data realistic for construction.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Build a team for: "${teamRequest}"${projectId ? ` (Project ID: ${projectId})` : ""}` },
+        ],
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+
+      res.json({
+        success: true,
+        ...parsed,
+      });
+    } catch (error) {
+      console.error("Error building team:", error);
+      res.status(500).json({ error: "Failed to build team" });
+    }
+  });
+
+  // GET /api/ai/daily-briefing - Morning briefing with weather, tasks, crew, safety
+  app.get("/api/ai/daily-briefing", async (req, res) => {
+    try {
+      const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const systemPrompt = `You are an AI construction site daily briefing generator. Generate a realistic morning briefing for a construction crew foreman.
+
+Return JSON with this structure:
+{
+  "greeting": "string - time-appropriate greeting",
+  "date": "${today}",
+  "weather": {
+    "condition": "string - e.g. Partly Cloudy",
+    "temperature": "string - e.g. 72F / 22C",
+    "humidity": "string - e.g. 45%",
+    "wind": "string - e.g. 8 mph NW",
+    "advisory": "string or null - weather warning if any",
+    "icon": "sun" | "cloud" | "cloud-rain" | "cloud-snow" | "wind" | "cloud-lightning"
+  },
+  "crewStatus": {
+    "totalExpected": number,
+    "checkedIn": number,
+    "onLeave": number,
+    "lateArrivals": number,
+    "highlights": ["array of crew-related notes"]
+  },
+  "todaysTasks": [
+    {
+      "title": "string",
+      "project": "string",
+      "priority": "high" | "medium" | "low",
+      "status": "pending" | "in_progress",
+      "assignedCrew": number,
+      "estimatedHours": number
+    }
+  ],
+  "safetyAlerts": [
+    {
+      "level": "critical" | "warning" | "info",
+      "title": "string",
+      "description": "string"
+    }
+  ],
+  "aiInsights": ["array of AI-generated insights and recommendations for the day"],
+  "equipmentStatus": {
+    "operational": number,
+    "maintenance": number,
+    "alerts": number
+  }
+}
+
+Generate realistic construction data. Include 4-6 tasks, 1-3 safety alerts, and 2-4 insights.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Generate today's morning briefing for ${today}. Include weather, crew status, tasks, safety alerts, and AI insights.` },
+        ],
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+
+      res.json({
+        success: true,
+        generatedAt: new Date().toISOString(),
+        ...parsed,
+      });
+    } catch (error) {
+      console.error("Error generating daily briefing:", error);
+      res.status(500).json({ error: "Failed to generate daily briefing" });
+    }
+  });
+
+  // POST /api/ai/building-code - Chat-style building code Q&A
+  app.post("/api/ai/building-code", async (req, res) => {
+    try {
+      const { question, conversationHistory } = req.body;
+
+      if (!question) {
+        return res.status(400).json({ error: "Question is required" });
+      }
+
+      const systemPrompt = `You are an expert construction building code compliance assistant. Answer questions about building codes, regulations, safety standards, and compliance requirements.
+
+Key areas of expertise:
+- International Building Code (IBC)
+- OSHA regulations
+- Fire codes and life safety
+- Structural requirements
+- Electrical codes (NEC)
+- Plumbing codes
+- Accessibility (ADA) requirements
+- Energy codes
+- Zoning regulations
+
+Provide accurate, practical answers. When citing codes, reference the specific section numbers. If you're unsure about a specific local jurisdiction's requirements, mention that local codes may vary. Keep answers concise but thorough.
+
+IMPORTANT: Always include a "confidence" field indicating how confident you are in the answer: "high", "medium", or "low".
+Always include a "sources" array with relevant code references.`;
+
+      const messages: any[] = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      if (conversationHistory && Array.isArray(conversationHistory)) {
+        for (const msg of conversationHistory.slice(-6)) {
+          messages.push({
+            role: msg.role === "user" ? "user" : "assistant",
+            content: msg.content,
+          });
+        }
+      }
+
+      messages.push({ role: "user", content: question });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        max_tokens: 1000,
+      });
+
+      const answer = response.choices[0]?.message?.content || "I couldn't generate an answer. Please try rephrasing your question.";
+
+      res.json({
+        success: true,
+        answer,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error answering building code question:", error);
+      res.status(500).json({ error: "Failed to answer question" });
+    }
+  });
+
+  // POST /api/ai/blueprint-takeoff - Analyze blueprint photo for quantity extraction
+  app.post("/api/ai/blueprint-takeoff", async (req, res) => {
+    try {
+      const { photoDescription, photoBase64, projectType } = req.body;
+
+      if (!photoDescription && !photoBase64) {
+        return res.status(400).json({ error: "Photo description or photo data is required" });
+      }
+
+      const systemPrompt = `You are an expert construction quantity takeoff specialist. Analyze the description of a blueprint or construction photo and extract material quantities, measurements, and cost estimates.
+
+Return JSON with this structure:
+{
+  "summary": "string - brief description of what was analyzed",
+  "measurements": [
+    {
+      "item": "string - material or component name",
+      "quantity": "string - amount with unit",
+      "unit": "string - measurement unit (sq ft, linear ft, cubic yd, etc.)",
+      "category": "structural" | "electrical" | "plumbing" | "finishing" | "exterior" | "mechanical",
+      "estimatedCost": "string - estimated cost range",
+      "notes": "string - any relevant notes"
+    }
+  ],
+  "totalEstimate": "string - total estimated cost range",
+  "materialCategories": {
+    "structural": number of items,
+    "electrical": number of items,
+    "plumbing": number of items,
+    "finishing": number of items,
+    "exterior": number of items,
+    "mechanical": number of items
+  },
+  "recommendations": ["array of recommendations for procurement"],
+  "warnings": ["array of potential issues or items that need verification"],
+  "accuracy": "high" | "medium" | "low" - how accurate the estimates are
+}
+
+Generate realistic construction quantities and costs. Be thorough but practical.`;
+
+      const userContent = photoBase64
+        ? `Analyze this blueprint/construction photo for quantity takeoff. Project type: ${projectType || "general construction"}. Photo provided as base64 image data.`
+        : `Analyze this blueprint/construction photo for quantity takeoff. Project type: ${projectType || "general construction"}. Photo description: "${photoDescription}"`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+
+      res.json({
+        success: true,
+        analyzedAt: new Date().toISOString(),
+        ...parsed,
+      });
+    } catch (error) {
+      console.error("Error analyzing blueprint:", error);
+      res.status(500).json({ error: "Failed to analyze blueprint" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
